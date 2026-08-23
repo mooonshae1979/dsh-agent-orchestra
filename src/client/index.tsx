@@ -51,13 +51,19 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'member-message',
-  }, (props: { node: { data: AgentOrchestraBubbleData } }) => (
-    <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} /></BubbleErrorBoundary>
+    inject: (): { openSession: (id: SessionId) => void } => ({
+      openSession: (id: SessionId) => { ctx.sessions.open(id) },
+    }),
+  }, (props: { node: { data: AgentOrchestraBubbleData } } & { openSession: (id: SessionId) => void }) => (
+    <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} openSession={props.openSession} /></BubbleErrorBoundary>
   )))
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'task-done',
-  }, (props: { node: { data: AgentOrchestraBubbleData } }) => (
-    <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} /></BubbleErrorBoundary>
+    inject: (): { openSession: (id: SessionId) => void } => ({
+      openSession: (id: SessionId) => { ctx.sessions.open(id) },
+    }),
+  }, (props: { node: { data: AgentOrchestraBubbleData } } & { openSession: (id: SessionId) => void }) => (
+    <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} openSession={props.openSession} /></BubbleErrorBoundary>
   )))
 }
