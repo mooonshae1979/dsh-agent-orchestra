@@ -895,7 +895,39 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
       }
     },
   }))
+
+  ctx.tools.register(defineTool({
+    name: 'orchestra_dispatch_step',
+    description: 'Dispatch a workflow step to a specific member: wakes the member with the step goal as its task. Use after orchestra_relay to act on the next step.',
+    parameters: {
+      step_id: { type: 'string', required: true, description: 'The step id to dispatch.' },
+      member_name: { type: 'string', required: true, description: 'The member to dispatch this step to (name or roleId).' },
+      context: { type: 'string', description: 'Optional additional task context for the member.' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: true, properties: {} },
+      render: (_args, value) => [{ type: 'text', text: 'Dispatched step "' + value.step_id + '" to ' + value.member_name + ' (' + value.delivered + ')' }],
+    },
+    async execute(args, exec) {
+      const captain = requireCaptain(exec)
+      const workspace = workspaceOf(captain)
+      const stateRoot = stateRootOf(workspace, config)
+      const team = await requireCaptainTeam(workspace, config, captain)
+      if (team.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
+      const workflow = getWorkflow(team.workflowId)
+      if (workflow === undefined) throw new Error('workflow "' + team.workflowId + '" not found')
+      const step = workflow.steps.find((s) => s.stepId === args.step_id)
+      if (step === undefined) throw new Error('unknown step "' + args.step_id + '" — available: ' + workflow.steps.map((s) => s.stepId).join(', '))
+      const member = team.members.find((m) => m.status !== 'removed' && (m.name === args.member_name || m.roleId === args.member_name))
+      if (member === undefined) throw new Error('no member named/role "' + args.member_name + '" in team')
+      if (member.id === '') throw new Error('member "' + member.name + '" is not spawned yet')
+      const text = 'Step "' + step.stepId + '": ' + step.goal + (args.context ? '\n\n' + args.context : '')
+      const delivered = await deliverToMember(ctx, captain, member.id, text, exec.signal)
+      return { step_id: step.stepId, member_name: member.name, delivered: delivered ? ('wake' as const) : ('mailbox' as const) }
+    },
+  }))
 }
+
 
 /** Build the `memberRuntime` config handed to member helpers. */
 function memberRuntime(config: ToolsConfig): MemberRuntimeConfig {
