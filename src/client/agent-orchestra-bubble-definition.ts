@@ -231,6 +231,7 @@ export const memberSettledDefinition: ConversationNodeDefinition<MutableBubbleSt
       return emptyState('member-settled')
     }
   },
+  update: (context, _match) => context.state,
   buildViewNode: (context): ChatConversationViewNode | null => {
     if (context.start === undefined) return null
     const s = context.state
