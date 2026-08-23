@@ -655,7 +655,10 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
         const senderText = prepared.from === CAPTAIN_KEY
           ? args.content
           : `Message from team member ${prepared.from}:\n\n${args.content}`
-        const text = `AgentOrchestra state policy: inspect ${config.stateDir}/${prepared.fresh.id}/ read-only; never edit team.json or inbox files directly. Use orchestra_* tools for team state.\n\n${senderText}`
+        const text = `AgentOrchestra state policy: inspect ${config.stateDir}/${prepared.fresh.id}/ read-only; never edit team.json or inbox files directly. Use orchestra_* tools for team state.\n\n${senderText}
+
+MANDATORY REPLY RULE: You MUST reply by calling orchestra_send_message(to=captain, content=<your full answer>). Do NOT reply as a bare subagent final message — the captain only sees replies that arrive via orchestra_send_message. End your turn with that tool call carrying your complete answer.`
+
         const accepted = await deliverToMember(ctx, captain, prepared.recipient.id, text, exec.signal)
         delivered = accepted ? 'wake' : 'mailbox'
       }
