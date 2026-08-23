@@ -65,7 +65,7 @@ export interface TeamMember {
   role?: string
   /** Optional RoleDef id this member instantiated (for persona fallback). */
   roleId?: string
-  /** Optional subagent provider override (e.g. `spawn`/`fork`). */
+  /** Optional subagent provider override (e.g. `spawn`/`fork`). This is the subagent spawn provider, NOT a model vendor — for a model vendor use `model` (which may carry `provider/model`). */
   provider?: string
   /** Optional model override for this member. */
   model?: string
@@ -110,32 +110,48 @@ export interface TeamState {
   taskSeq: number
 }
 
-
 /** One step in a workflow: what to produce and who does it next. */
 export interface StepDef {
+  /** Stable id of this step within its workflow. */
   stepId: string
+  /** What this step should produce. */
   goal: string
+  /** Expected output kind: `text`, `artifact`, or `any` (unrestricted, passed to the next step). */
   outputType: 'text' | 'artifact' | 'any'
+  /** Next step's stepId; undefined means the workflow ends here. */
   next?: string
+  /** When true, members of this step talk directly to each other (relay-free handoff, bypassing the captain). */
   membersDirect?: boolean
+  /** Suggested role id responsible for this step (e.g. `engineer`/`reviewer`). */
   assigneeHint?: string
+  /** Nested sub-workflow (lightweight: this step internally runs a predefined workflow). */
   subflow?: WorkflowDef
 }
 
 /** A workflow template: an ordered list of steps producing a goal. */
 export interface WorkflowDef {
+  /** Stable workflow id. */
   id: string
+  /** Human-readable workflow name. */
   name: string
+  /** Ordered list of steps. */
   steps: StepDef[]
 }
 
 /** A Role template in the (semi-prebuilt) identity library. */
 export interface RoleDef {
+  /** Stable role id (e.g. `engineer`, `reviewer`). */
   id: string
+  /** Human-readable role display name. */
   displayName: string
+  /** Pre-synthesized persona text for this role. */
   persona: string
+  /** Optional default subagent provider override (e.g. `spawn`/`fork`). */
   defaultProvider?: string
+  /** Optional default model override for this role. */
   defaultModel?: string
+  /** Optional default tool-set mode for this role. */
   defaultMode?: MemberMode
+  /** Optional tool whitelist for this role. */
   tools?: string[]
 }
