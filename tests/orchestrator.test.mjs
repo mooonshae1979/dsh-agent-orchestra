@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { getWorkflow } from '../lib/workflow.js'
+import { getRole } from '../lib/workflow.js'
+import { buildPersona } from '../lib/persona-builder.js'
 import { assembleMembers, decideNext, isMembersDirect, defaultMemberName } from '../lib/orchestrator.js'
 
 let passed = 0
@@ -32,6 +34,22 @@ t('isMembersDirect true on dev reviewer', () => {
 t('defaultMemberName dedupes', () => {
   assert.equal(defaultMemberName('engineer', 0), 'engineer')
   assert.equal(defaultMemberName('engineer', 1), 'engineer-2')
+})
+
+// assemble 用 getRole 取模板默认（novelist 的 persona 非空 → assemble 出的成员应带 roleId 且可被 persona-builder 用）
+t('assemble members carry roleId so persona-template is usable', () => {
+  const m = assembleMembers(getWorkflow('write'))
+  const novelist = m.find(x => x.roleId === 'novelist')
+  assert.ok(novelist)
+  const persona = buildPersona({ role: getRole('novelist'), member: novelist, teamName: 't' })
+  assert.ok(persona.includes('You are an AI novelist'))
+})
+t('decideNext unknown step is done', () => {
+  const d = decideNext(getWorkflow('research'), 'ghost')
+  assert.equal(d.done, true)
+})
+t('isMembersDirect false on non-direct step', () => {
+  assert.equal(isMembersDirect(getWorkflow('research'), 'researcher'), false)
 })
 
 console.log('\norchestrator: ' + passed + ' passed')

@@ -7,14 +7,15 @@
  * @module dsh-agent-orchestra/orchestrator
  */
 
-import type { RoleDef, StepDef, TeamMember, WorkflowDef } from './types.ts'
+import type { MemberMode, RoleDef, StepDef, TeamMember, WorkflowDef } from './types.ts'
+import { getRole } from './workflow.ts'
 
 export interface MemberInstantiation {
   name?: string
   role?: string
   provider?: string
   model?: string
-  mode?: 'minimal' | 'standard'
+  mode?: MemberMode
 }
 
 /** Derive a deterministic member name from role + index (dedupe-friendly). */
@@ -30,7 +31,7 @@ export function instantiateMember(
 ): TeamMember {
   return {
     id: '',
-    name: overrides.name ?? defaultMemberName(overrides.role ?? role?.id ?? 'member', index),
+    name: overrides.name ?? defaultMemberName(overrides.role ?? role?.displayName ?? 'member', index),
     role: overrides.role ?? role?.displayName,
     roleId: role?.id,
     provider: overrides.provider ?? role?.defaultProvider,
@@ -54,11 +55,8 @@ export function assembleMembers(
     if (hint === undefined) continue
     if (seen.has(hint)) continue
     const ov = overrides[hint] ?? {}
-    const member = instantiateMember(
-      { id: hint, displayName: hint, persona: '' },
-      ov,
-      index,
-    )
+    const role = getRole(hint)
+    const member = instantiateMember(role, ov, index)
     members.push(member)
     seen.add(hint)
     index += 1
