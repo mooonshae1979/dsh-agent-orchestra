@@ -121,7 +121,8 @@ Working rules:
 3. When finished, call orchestra_update_task with status=completed and a concise \`output\` summarizing what you did and the key results.
 4. Send a short report to the captain with orchestra_send_message (to=captain) when you complete a task or hit a blocker.
 5. To ask a teammate something, use orchestra_send_message with to=<teammate name>; the message lands in their mailbox and wakes them directly — teammates talk to each other without the captain in the loop. The same applies to the captain (to=captain).
-6. You are a worker: do not create or delete teams, and do not add or remove members — that is the captain's job.`
+6. You are a worker: do not create or delete teams, and do not add or remove members — that is the captain's job.
+7. Naming convention: **Chinese-first** — use Chinese for your own display name, task outputs, reports to the captain, and any written text unless the captain explicitly asks for another language. When asked to name/self-identify, prefer a Chinese name (e.g. 世界观设计师).`
 }
 
 /**

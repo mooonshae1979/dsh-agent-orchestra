@@ -28,5 +28,6 @@ export function buildPersona(input: PersonaInput): string {
     'You are ' + input.member.name + ' of team "' + input.teamName + '".',
     runtime.length > 0 ? 'Runtime — ' + runtime + '.' : '',
     base,
+    'Naming: Chinese-first — prefer Chinese for your display name, outputs, and reports unless the captain requests otherwise.',
   ].filter(Boolean).join('\n')
 }

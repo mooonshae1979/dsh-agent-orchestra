@@ -259,7 +259,7 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
     name: 'orchestra_add_member',
     description: 'Add a member to your team: spawns a durable continuable subagent with a member persona. The member waits for your messages and works on assigned tasks; it can message you and teammates. One team per captain, members are capped by config.',
     parameters: {
-      name: { type: 'string', required: true, description: 'Unique member name inside the team.' },
+      name: { type: 'string', required: true, description: 'Unique member name inside the team. Chinese-first naming is preferred (e.g. 世界观设计师).' },
       role: { type: 'string', description: 'Role of the member (e.g. researcher, engineer, reviewer).' },
       model: { type: 'string', description: 'Optional model override for this member (defaults to the captain\'s model). Use `provider/model` (e.g. `trae-solo/Doubao-Seed-2.1-Turbo`) to pin the provider too; a bare model name keeps the captain\'s provider but overrides the model.' },
       mode: { type: 'string', enum: ['minimal', 'standard'], description: 'Tool-set mode for this member. "standard" (default) = full tools minus captain-only tools; recommended under an Anchored Standard captain so the member inherits the bootstrap-then-promote preset without losing the full set. "minimal" = pwsh + str_replace_editor plus team tools (focused single-task coding); NOTE: under Anchored Standard this toolFilter cuts the post-promotion full toolset, so use it only for a truly minimal one-shot member.' },
