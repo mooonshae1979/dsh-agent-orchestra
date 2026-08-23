@@ -41,6 +41,8 @@ import {
   type MemberRuntimeConfig,
 } from './members.ts'
 import type { TeamMember, TeamState, TeamTask } from './types.ts'
+import { DEFAULT_WORKFLOWS, getWorkflow, validateWorkflow } from './workflow.ts'
+import { assembleMembers, decideNext } from './orchestrator.ts'
 
 /** Resolved plugin config consumed by the tools. */
 export interface ToolsConfig {
@@ -787,7 +789,151 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
       return { deleted: true, team_name: team.name }
     },
   }))
+
+  ctx.tools.register(defineTool({
+    name: 'orchestra_define_workflow',
+    description: 'Select a workflow template (research/dev/implement/write) or validate a custom workflow JSON. Returns the workflow steps and validation errors.',
+    parameters: {
+      workflow_id: { type: 'string', required: true, description: 'Workflow id (research/dev/implement/write) or "custom".' },
+      custom: { type: 'string', description: 'Optional JSON WorkflowDef when workflow_id="custom".' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: true, properties: {} },
+      render: (_args, value) => [{ type: 'text', text: renderWorkflow(value) }],
+    },
+    async execute(args, _exec) {
+      if (args.workflow_id === 'custom') {
+        const parsed = JSON.parse(args.custom ?? '{}') as unknown
+        const shape = parsed as Record<string, unknown>
+        if (typeof parsed !== 'object' || parsed === null || !Array.isArray(shape.steps)) {
+          throw new Error('custom workflow invalid: must be an object with a steps array')
+        }
+        const errors = validateWorkflow(parsed as never)
+        if (errors.length > 0) throw new Error('custom workflow invalid: ' + errors.join('; '))
+        return { workflow_id: String(shape.id ?? ''), name: String(shape.name ?? ''), steps: shape.steps as never, errors }
+      }
+      const workflow = getWorkflow(args.workflow_id)
+      if (workflow === undefined) {
+        throw new Error('unknown workflow "' + args.workflow_id + '" — available: ' + DEFAULT_WORKFLOWS.map((w) => w.id).join(', '))
+      }
+      return { workflow_id: workflow.id, name: workflow.name, steps: workflow.steps as never, errors: validateWorkflow(workflow) }
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'orchestra_assemble',
+    description: 'Instantiate members from a workflow template (one member per assigneeHint). Optionally override names/roles/models per assigneeHint via JSON. Spawns members and records workflowId on the team.',
+    parameters: {
+      workflow_id: { type: 'string', required: true, description: 'Workflow id to assemble from.' },
+      overrides: { type: 'string', description: 'Optional JSON map: assigneeHint -> { name, model, provider, mode }.' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: true, properties: {} },
+      render: (_args, value) => [{ type: 'text', text: 'Assembled ' + value.member_count + ' members for workflow "' + value.workflow_id + '"' }],
+    },
+    async execute(args, exec) {
+      const captain = requireCaptain(exec)
+      const workspace = workspaceOf(captain)
+      const stateRoot = stateRootOf(workspace, config)
+      const team = await requireCaptainTeam(workspace, config, captain)
+      const workflow = getWorkflow(args.workflow_id)
+      if (workflow === undefined) throw new Error('unknown workflow "' + args.workflow_id + '" — available: ' + DEFAULT_WORKFLOWS.map((w) => w.id).join(', '))
+      const overrides = JSON.parse(args.overrides ?? '{}') as Record<string, unknown>
+      const fresh = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+        const f = await requireFreshCaptainTeam(stateRoot, team.id, captain.id)
+        const members = assembleMembers(workflow, overrides as never, fresh.name)
+        const activeCount = f.members.filter((c) => c.status !== 'removed').length
+        if (activeCount + members.length > config.maxMembers) {
+          throw new Error(`team "${f.name}" would exceed member cap (${config.maxMembers}): ${activeCount} active + ${members.length} to add`)
+        }
+        for (const member of members) {
+          if (f.members.some((c) => sanitizeKey(c.name) === sanitizeKey(member.name))) continue
+          await spawnMember(ctx, memberRuntime(config), captain, f, member, config.stateDir, exec.signal)
+          f.members.push(member)
+          appendTeamEvent(ctx, captainSessionOf(ctx, f.captainSessionId, captain.session), 'agent-orchestra/member-added', {
+            teamId: f.id,
+            memberId: member.id,
+            name: member.name,
+            ...(member.role !== undefined ? { role: member.role } : {}),
+          })
+        }
+        f.workflowId = workflow.id
+        f.stepIndex = 0
+        await writeTeam(stateRoot, f)
+        return f
+      })
+      return { workflow_id: workflow.id, member_count: fresh.members.length, step_index: fresh.stepIndex ?? 0 }
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'orchestra_relay',
+    description: 'Compute the next workflow step after a completed step (no state write). Returns the next step/assignee for the captain to dispatch, or done=true. Persisting progress and dispatch are handled in the dispatch flow.',
+    parameters: {
+      completed_step_id: { type: 'string', required: true, description: 'The step id that just completed.' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: true, properties: {} },
+      render: (_args, value) => [{ type: 'text', text: value.done ? 'Workflow complete' : 'Next step: ' + value.next_step_id }],
+    },
+    async execute(args, exec) {
+      const captain = requireCaptain(exec)
+      const workspace = workspaceOf(captain)
+      const stateRoot = stateRootOf(workspace, config)
+      const team = await requireCaptainTeam(workspace, config, captain)
+      return withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+        const fresh = await requireFreshCaptainTeam(stateRoot, team.id, captain.id)
+        if (fresh.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
+        const workflow = getWorkflow(fresh.workflowId)
+        if (workflow === undefined) throw new Error('workflow "' + fresh.workflowId + '" not found')
+        if (!workflow.steps.some((s) => s.stepId === args.completed_step_id)) {
+          throw new Error('unknown step "' + args.completed_step_id + '" — available: ' + workflow.steps.map((s) => s.stepId).join(', '))
+        }
+        const decision = decideNext(workflow, args.completed_step_id)
+        return {
+          workflow_id: workflow.id,
+          done: decision.done,
+          ...(decision.nextStep !== undefined ? { next_step_id: decision.nextStep.stepId, next_assignee_hint: decision.nextStep.assigneeHint, members_direct: decision.nextStep.membersDirect === true } : {}),
+        }
+      })
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'orchestra_dispatch_step',
+    description: 'Dispatch a workflow step to a specific member: wakes the member with the step goal as its task. Use after orchestra_relay to act on the next step.',
+    parameters: {
+      step_id: { type: 'string', required: true, description: 'The step id to dispatch.' },
+      member_name: { type: 'string', required: true, description: 'The member to dispatch this step to (name or roleId).' },
+      context: { type: 'string', description: 'Optional additional task context for the member.' },
+    },
+    output: {
+      schema: { type: 'object', additionalProperties: true, properties: {} },
+      render: (_args, value) => [{ type: 'text', text: 'Dispatched step "' + value.step_id + '" to ' + value.member_name + ' (' + value.delivered + ')' }],
+    },
+    async execute(args, exec) {
+      const captain = requireCaptain(exec)
+      const workspace = workspaceOf(captain)
+      const stateRoot = stateRootOf(workspace, config)
+      const team = await requireCaptainTeam(workspace, config, captain)
+      return withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+        const fresh = await requireFreshCaptainTeam(stateRoot, team.id, captain.id)
+        if (fresh.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
+        const workflow = getWorkflow(fresh.workflowId)
+        if (workflow === undefined) throw new Error('workflow "' + fresh.workflowId + '" not found')
+        const step = workflow.steps.find((s) => s.stepId === args.step_id)
+        if (step === undefined) throw new Error('unknown step "' + args.step_id + '" — available: ' + workflow.steps.map((s) => s.stepId).join(', '))
+        const member = fresh.members.find((m) => m.status !== 'removed' && (m.name === args.member_name || m.roleId === args.member_name))
+        if (member === undefined) throw new Error('no member named/role "' + args.member_name + '" in team')
+        if (member.id === '') throw new Error('member "' + member.name + '" is not spawned yet')
+        const text = 'Step "' + step.stepId + '": ' + step.goal + (args.context ? '\n\n' + args.context : '')
+        const delivered = await deliverToMember(ctx, captain, member.id, text, exec.signal)
+        return { step_id: step.stepId, member_name: member.name, delivered: delivered ? ('wake' as const) : ('mailbox' as const) }
+      })
+    },
+  }))
 }
+
 
 /** Build the `memberRuntime` config handed to member helpers. */
 function memberRuntime(config: ToolsConfig): MemberRuntimeConfig {
@@ -833,6 +979,16 @@ function renderStatus(value: JsonValue): string {
       `Mailbox warnings (${team.mailbox_warning_count}; malformed lines were skipped; showing up to 10):`,
       ...team.mailbox_warnings.map((warning) => `  - ${warning}`),
     )
+  }
+  return lines.join('\n')
+}
+
+/** Render a workflow definition as compact text. */
+function renderWorkflow(value: unknown): string {
+  const w = value as { workflow_id: string; name: string; steps: { stepId: string; goal: string; next?: string }[] }
+  const lines = ['Workflow "' + w.workflow_id + '" — ' + w.name]
+  for (const step of w.steps) {
+    lines.push('  - ' + step.stepId + ': ' + step.goal + (step.next ? ' -> ' + step.next : ' (end)'))
   }
   return lines.join('\n')
 }

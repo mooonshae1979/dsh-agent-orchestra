@@ -101,6 +101,12 @@ export function parseMemberModelOverride(
  *   team files with its own file tools.
  */
 export function memberPersona(team: TeamState, member: TeamMember, stateDir: string): string {
+  // A member may carry a pre-synthesized persona (e.g. from persona-builder
+  // during assemble). If present and non-empty, it wins — the role template's
+  // identity should take effect for this member.
+  if (member.persona !== undefined && member.persona.length > 0) {
+    return member.persona
+  }
   return `You are ${member.name}, a member of the multi-agent team "${team.name}" running inside DeepSeek Harness AgentOrchestra. The captain leads the team; you are a worker member${member.role ? ` with the role: ${member.role}` : ''}.
 
 Team context:
