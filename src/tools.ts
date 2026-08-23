@@ -886,6 +886,9 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
         if (fresh.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
         const workflow = getWorkflow(fresh.workflowId)
         if (workflow === undefined) throw new Error('workflow "' + fresh.workflowId + '" not found')
+        if (!workflow.steps.some((s) => s.stepId === args.completed_step_id)) {
+          throw new Error('unknown step "' + args.completed_step_id + '" — available: ' + workflow.steps.map((s) => s.stepId).join(', '))
+        }
         const decision = decideNext(workflow, args.completed_step_id)
         return {
           workflow_id: workflow.id,
