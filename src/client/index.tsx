@@ -8,6 +8,10 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { ActivityPanel } from './ActivityPanel.tsx'
 import { AgentOrchestraCard, type AgentOrchestraCardInjected } from './AgentOrchestraCard.tsx'
 import { agentOrchestraCardDefinition } from './agent-orchestra-card-definition.ts'
+import { memberMessageDefinition, taskDoneDefinition } from './agent-orchestra-bubble-definition.ts'
+import { AgentOrchestraBubble } from './AgentOrchestraBubble.tsx'
+import { BubbleErrorBoundary } from './bubble-error-boundary.tsx'
+import type { AgentOrchestraBubbleData } from './agent-orchestra-bubble-definition.ts'
 
 /** Required services: conversation nodes, slots, and sessions navigation. */
 export const inject = ['conversationEvents', 'slots', 'sessions']
@@ -33,6 +37,8 @@ export function apply(ctx: ClientContext): void {
   }, 'agent-orchestra: activity panel')
 
   ctx.conversationEvents.register(agentOrchestraCardDefinition)
+  ctx.conversationEvents.register(memberMessageDefinition)
+  ctx.conversationEvents.register(taskDoneDefinition)
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'agent-orchestra',
@@ -41,4 +47,17 @@ export function apply(ctx: ClientContext): void {
       currentSessionId: () => ctx.sessions.list.getSnapshot().current,
     }),
   }, AgentOrchestraCard))
+
+  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
+    name: 'conversation.chat.node',
+    key: 'member-message',
+  }, (props: { node: { data: AgentOrchestraBubbleData } }) => (
+    <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} /></BubbleErrorBoundary>
+  )))
+  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
+    name: 'conversation.chat.node',
+    key: 'task-done',
+  }, (props: { node: { data: AgentOrchestraBubbleData } }) => (
+    <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} /></BubbleErrorBoundary>
+  )))
 }
