@@ -48,6 +48,9 @@ function lineCount(text: string): number {
 /** Unwrapped card body; isolated by {@link BubbleErrorBoundary} in the export. */
 function MemberMessageCardInner({ block }: { block: ToolCallOwnerProps['block'] }) {
   const [expanded, setExpanded] = useState(false)
+  if (typeof block !== 'object' || block === null) {
+    return <div className={css.memberMsgCard} data-member-msg>（无法解析的成员消息）</div>
+  }
   const raw = 'kind' in block ? (block as { call?: { argsRaw?: string } }).call?.argsRaw : (block as { argsRaw?: string }).argsRaw
   const args = parseArgs(raw)
   const from = safeStr(args.from).trim()
