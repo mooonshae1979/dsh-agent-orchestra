@@ -10,6 +10,7 @@ import { AgentOrchestraCard, type AgentOrchestraCardInjected } from './AgentOrch
 import { agentOrchestraCardDefinition } from './agent-orchestra-card-definition.ts'
 import { AgentOrchestraBubble } from './AgentOrchestraBubble.tsx'
 import { BubbleErrorBoundary } from './bubble-error-boundary.tsx'
+import type { AgentOrchestraBubbleData } from './agent-orchestra-bubble-definition.ts'
 
 /** Required services: conversation nodes, slots, and sessions navigation. */
 export const inject = ['conversationEvents', 'slots', 'sessions']
@@ -47,7 +48,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'agent-orchestra-bubble',
-  }, (props: { data: never }) => (
-    <BubbleErrorBoundary><AgentOrchestraBubble data={props.data as never} /></BubbleErrorBoundary>
+  }, (props: { node: { data: AgentOrchestraBubbleData } }) => (
+    <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} /></BubbleErrorBoundary>
   )))
 }
