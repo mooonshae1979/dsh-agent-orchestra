@@ -38,4 +38,14 @@ t('validateWorkflow accepts valid', () => {
   assert.deepStrictEqual(validateWorkflow(getWorkflow('research')), [])
 })
 
+t('every workflow assigneeHint maps to a known role', () => {
+  for (const w of DEFAULT_WORKFLOWS) {
+    for (const step of w.steps) {
+      if (step.assigneeHint !== undefined) {
+        assert.ok(getRole(step.assigneeHint), 'missing role for assigneeHint ' + step.assigneeHint)
+      }
+    }
+  }
+})
+
 console.log('\nworkflow: ' + passed + ' passed')
