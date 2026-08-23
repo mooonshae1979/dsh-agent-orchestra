@@ -48,4 +48,19 @@ t('every workflow assigneeHint maps to a known role', () => {
   }
 })
 
+t('validateWorkflow requires steps array', () => {
+  assert.ok(validateWorkflow({ id: 'x', name: 'x', steps: undefined }).length > 0)
+})
+t('validateWorkflow rejects missing goal', () => {
+  const w = { id: 'x', name: 'x', steps: [{ stepId: 'a', outputType: 'text' }] }
+  assert.ok(validateWorkflow(w).length > 0)
+})
+t('validateWorkflow rejects invalid outputType', () => {
+  const w = { id: 'x', name: 'x', steps: [{ stepId: 'a', goal: 'g', outputType: 'bogus' }] }
+  assert.ok(validateWorkflow(w).length > 0)
+})
+t('novelist role has novel tools whitelist', () => {
+  assert.deepStrictEqual(getRole('novelist').tools, ['novel_read', 'novel_apply_change'])
+})
+
 console.log('\nworkflow: ' + passed + ' passed')

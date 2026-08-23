@@ -10,11 +10,27 @@ import type { RoleDef, StepDef, WorkflowDef } from './types.ts'
 /** Validate a workflow's step graph: every `next` must reference a real step. */
 export function validateWorkflow(workflow: WorkflowDef): string[] {
   const errors: string[] = []
+  if (workflow === undefined || workflow === null || typeof workflow !== 'object') {
+    return ['workflow must be an object']
+  }
+  if (!Array.isArray(workflow.steps)) {
+    return ['workflow must have a steps array']
+  }
   const ids = new Set(workflow.steps.map((step) => step.stepId))
   if (ids.size !== workflow.steps.length) {
-    errors.push(`workflow "${workflow.id}" has duplicate step ids`)
+    errors.push(`workflow "${String(workflow.id ?? '')}" has duplicate step ids`)
   }
   for (const step of workflow.steps) {
+    if (step === undefined || typeof step !== 'object' || typeof step.stepId !== 'string' || step.stepId.length === 0) {
+      errors.push('a step is missing a non-empty stepId')
+      continue
+    }
+    if (typeof step.goal !== 'string' || step.goal.length === 0) {
+      errors.push(`step "${step.stepId}" is missing goal`)
+    }
+    if (step.outputType !== undefined && !['text', 'artifact', 'any'].includes(step.outputType)) {
+      errors.push(`step "${step.stepId}" has invalid outputType "${String(step.outputType)}"`)
+    }
     if (step.next !== undefined && !ids.has(step.next)) {
       errors.push(`step "${step.stepId}" references unknown next "${step.next}"`)
     }
@@ -31,7 +47,7 @@ export const DEFAULT_ROLES: RoleDef[] = [
   { id: 'engineer', displayName: 'engineer', persona: 'You are a pragmatic software engineer. Implement clean, tested code following the task spec. Report what you changed and why.' },
   { id: 'reviewer', displayName: 'reviewer', persona: 'You are a rigorous reviewer. Review the produced artifact for correctness, quality and completeness. Provide actionable feedback or an approval.' },
   { id: 'planner', displayName: 'planner', persona: 'You are an architect/planner. Turn the goal into a concrete execution plan with clear steps, boundaries and acceptance criteria.' },
-  { id: 'novelist', displayName: 'novelist', persona: 'You are an AI novelist. Write engaging, coherent prose. Use the novel tools (novel_read / novel_apply_change) when available. Produce polished creative text.' },
+  { id: 'novelist', displayName: 'novelist', persona: 'You are an AI novelist. Write engaging, coherent prose. Use the novel tools (novel_read / novel_apply_change) when available. Produce polished creative text.', tools: ['novel_read', 'novel_apply_change'] },
 ]
 
 /** Default workflow templates. */
