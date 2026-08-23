@@ -1,0 +1,18 @@
+# dsh-agent-orchestra bundle patch: mounts the agent-orchestra plugin into the
+# host composition of a dsh profile. The plugin registers its `orchestra_*`
+# tools into the shared `tools` registry and one usage section into the global
+# system prompt, so every session of the profile can drive conversation-driven
+# multi-agent orchestration through natural language ("用 Orchestra 做 X").
+#
+# Install: `dsh plugin --profile <name> add <this package>` (npm or a local
+# path). The `dsh plugin` command pnpm-installs the package into the profile
+# and reconciles it into the profile's `dsh.profile.bundles` layer list.
+- insert:
+    - id: agent-orchestra
+      name: dsh-agent-orchestra
+      config:
+        # Team state lives under `<session workspace>/<stateDir>/<teamId>/`
+        # (team.json + inbox/*.jsonl mailboxes).
+        stateDir: .agent-orchestra
+        # Provider used to spawn member subagents ('spawn' or 'fork').
+        memberProvider: spawn

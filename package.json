@@ -1,0 +1,82 @@
+{
+  "name": "dsh-agent-orchestra",
+  "version": "0.1.0",
+  "description": "dsh-agent-teams 的对话式编排进化版：对话驱动多 Agent 团队（队长=分配者），工作流模板接力，按任务现场定制成员身份/模型/模式，支持写作流、动态增删组员与轻量子流程",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "assets/agent-teams",
+    "cordis.patch.yml",
+    "README.md",
+    "assets/ui.png"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
+      "platform": "web"
+    }
+  },
+  "dshClient": {
+    "inject": [
+      "@deepseek-ai/dsh-client-locale",
+      "@deepseek-ai/dsh-client-runtime",
+      "@deepseek-ai/dsh-client-ui-conversation"
+    ],
+    "platform": "web"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.client.json && tsdown",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "sync:skill": "node scripts/sync-skill.mjs",
+    "verify:skill": "node scripts/sync-skill.mjs --check",
+    "verify": "node scripts/verify.mjs && pnpm verify:skill"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1-rc.1",
+    "@deepseek-ai/dsh-agent": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-client-locale": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-client-runtime": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-session": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-subagent": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.0.1-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.0.1-rc.1",
+    "react": "^18.2.0",
+    "@deepseek-ai/schemastery": "^3.18.1-rc.1"
+  },
+  "devDependencies": {
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "^19.2.4",
+    "lightningcss": "^1.33.0",
+    "tsdown": "0.22.2",
+    "typescript": "^5.9.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
