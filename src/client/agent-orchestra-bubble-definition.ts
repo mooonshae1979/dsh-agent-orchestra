@@ -5,7 +5,7 @@ import type {
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { AgentOrchestraBubbleData } from './bubble-pure.ts'
 export type { AgentOrchestraBubbleData }
-export { parseSendMessageBubble, parseUpdateTaskBubble, collapseText, BUBBLE_EXCERPT_LEN } from './bubble-pure.ts'
+import { parseSendMessageBubble, parseUpdateTaskBubble, collapseText, BUBBLE_EXCERPT_LEN } from './bubble-pure.ts'
 // Module-loading imports: the declaration merges below extend modules that
 // must be present in the program — a type-only import both loads them and is
 // erased from the bundle.
@@ -101,6 +101,7 @@ export const memberMessageDefinition: ConversationNodeDefinition<MutableBubbleSt
   buildViewNode: (context): ChatConversationViewNode | null => {
     if (context.start === undefined) return null
     const s = context.state
+    if (s === undefined) return null
     if (!s.accepted || s.kind !== 'member-message') return null
     return {
       key: context.key,
@@ -164,6 +165,7 @@ export const taskDoneDefinition: ConversationNodeDefinition<MutableBubbleState> 
   buildViewNode: (context): ChatConversationViewNode | null => {
     if (context.start === undefined) return null
     const s = context.state
+    if (s === undefined) return null
     if (!s.accepted || s.kind !== 'task-done') return null
     return {
       key: context.key,
