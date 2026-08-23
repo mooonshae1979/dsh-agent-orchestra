@@ -881,18 +881,18 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
       const workspace = workspaceOf(captain)
       const stateRoot = stateRootOf(workspace, config)
       const team = await requireCaptainTeam(workspace, config, captain)
-      if (team.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
-      const workflow = getWorkflow(team.workflowId)
-      if (workflow === undefined) throw new Error('workflow "' + team.workflowId + '" not found')
-      if (!workflow.steps.some((s) => s.stepId === args.completed_step_id)) {
-        throw new Error('unknown step "' + args.completed_step_id + '" — available: ' + workflow.steps.map((s) => s.stepId).join(', '))
-      }
-      const decision = decideNext(workflow, args.completed_step_id)
-      return {
-        workflow_id: workflow.id,
-        done: decision.done,
-        ...(decision.nextStep !== undefined ? { next_step_id: decision.nextStep.stepId, next_assignee_hint: decision.nextStep.assigneeHint, members_direct: decision.nextStep.membersDirect === true } : {}),
-      }
+      return withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+        const fresh = await requireFreshCaptainTeam(stateRoot, team.id, captain.id)
+        if (fresh.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
+        const workflow = getWorkflow(fresh.workflowId)
+        if (workflow === undefined) throw new Error('workflow "' + fresh.workflowId + '" not found')
+        const decision = decideNext(workflow, args.completed_step_id)
+        return {
+          workflow_id: workflow.id,
+          done: decision.done,
+          ...(decision.nextStep !== undefined ? { next_step_id: decision.nextStep.stepId, next_assignee_hint: decision.nextStep.assigneeHint, members_direct: decision.nextStep.membersDirect === true } : {}),
+        }
+      })
     },
   }))
 

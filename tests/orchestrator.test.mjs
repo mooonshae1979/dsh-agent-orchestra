@@ -52,4 +52,15 @@ t('isMembersDirect false on non-direct step', () => {
   assert.equal(isMembersDirect(getWorkflow('research'), 'researcher'), false)
 })
 
+t('assemble members carry synthesized persona from role template', () => {
+  const m = assembleMembers(getWorkflow('write'), {}, 'myTeam')
+  const novelist = m.find(x => x.roleId === 'novelist')
+  assert.ok(novelist)
+  assert.ok(novelist.persona && novelist.persona.includes('AI novelist'))
+})
+t('assemble with teamName passes to persona', () => {
+  const m = assembleMembers(getWorkflow('research'), {}, 'research-team')
+  const r = m.find(x => x.roleId === 'researcher')
+  assert.ok(r && r.persona && r.persona.includes('research-team'))
+})
 console.log('\norchestrator: ' + passed + ' passed')

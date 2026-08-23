@@ -9,6 +9,7 @@
 
 import type { MemberMode, RoleDef, StepDef, TeamMember, WorkflowDef } from './types.ts'
 import { getRole } from './workflow.ts'
+import { buildPersona } from './persona-builder.ts'
 
 export interface MemberInstantiation {
   name?: string
@@ -28,8 +29,9 @@ export function instantiateMember(
   role: RoleDef | undefined,
   overrides: Partial<MemberInstantiation>,
   index: number,
+  teamName = '',
 ): TeamMember {
-  return {
+  const member: TeamMember = {
     id: '',
     name: overrides.name ?? defaultMemberName(overrides.role ?? role?.displayName ?? 'member', index),
     role: overrides.role ?? role?.displayName,
@@ -40,12 +42,19 @@ export function instantiateMember(
     joinedAt: Date.now(),
     status: 'idle',
   }
+  // Synthesize a member persona from the role template + identity, so spawn
+  // honors the role's persona (persona-builder output).
+  if (member.persona === undefined && role !== undefined) {
+    member.persona = buildPersona({ role, member, teamName })
+  }
+  return member
 }
 
 /** Build one member per distinct assigneeHint in a workflow, honoring overrides. */
 export function assembleMembers(
   workflow: WorkflowDef,
   overrides: Record<string, Partial<MemberInstantiation>> = {},
+  teamName = '',
 ): TeamMember[] {
   const members: TeamMember[] = []
   const seen = new Set<string>()
@@ -56,7 +65,7 @@ export function assembleMembers(
     if (seen.has(hint)) continue
     const ov = overrides[hint] ?? {}
     const role = getRole(hint)
-    const member = instantiateMember(role, ov, index)
+    const member = instantiateMember(role, ov, index, teamName)
     members.push(member)
     seen.add(hint)
     index += 1
