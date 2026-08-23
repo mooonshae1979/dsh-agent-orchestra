@@ -1,5 +1,5 @@
 /**
- * Browser client bundle for dsh-agent-teams, mirroring the DeepSeek Harness
+ * Browser client bundle for dsh-agent-orchestra, mirroring the DeepSeek Harness
  * `clientBundle` protocol (packages/client/tsdown.client.ts):
  *
  * - CJS closure-factory artifact: `window.__ModuleLoader__.load({ id,
@@ -47,7 +47,7 @@ const GENERATED_REMOTE = /^@deepseek-ai\/dsh-[a-z0-9]+(?:-[a-z0-9]+)*\/remote$/
 const CSS_VIRTUAL_PREFIX = '\0dsh-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
 
-const PLUGIN_ID = 'dsh-agent-teams'
+const PLUGIN_ID = 'dsh-agent-orchestra'
 
 const config: UserConfig = {
   name: `${PLUGIN_ID}/client`,

@@ -1,5 +1,5 @@
 /**
- * Durable AgentTeams session events and their emitter.
+ * Durable AgentOrchestra session events and their emitter.
  *
  * Every team-state mutation appends one event to the captain's Session, so
  * the web client's Conversation Node mechanism can fold the tree view from
@@ -17,13 +17,13 @@ import type { Context } from '@deepseek-ai/cordis'
 import * as dshSession from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type { SessionEventMap, SessionId } from '@deepseek-ai/dsh-session/types'
-import type { AgentTeamsEventType } from './event-types.ts'
+import type { AgentOrchestraEventType } from './event-types.ts'
 
 /** Event types already reported as unsupported, to avoid repetitive logs. */
-const skippedEventTypes = new Set<AgentTeamsEventType>()
+const skippedEventTypes = new Set<AgentOrchestraEventType>()
 
 /**
- * Append one AgentTeams event to a Session, containing failures (a broken
+ * Append one AgentOrchestra event to a Session, containing failures (a broken
  * durable record must never break team tool execution).
  * @param ctx - the plugin context (for logging).
  * @param session - the session to record into (the captain's, normally).
@@ -33,8 +33,8 @@ const skippedEventTypes = new Set<AgentTeamsEventType>()
 export function appendTeamEvent(
   ctx: Context,
   session: Session,
-  type: AgentTeamsEventType,
-  data: SessionEventMap[AgentTeamsEventType],
+  type: AgentOrchestraEventType,
+  data: SessionEventMap[AgentOrchestraEventType],
 ): void {
   // Out-of-repo events are not in the harness's generated vocabulary today.
   // Mutating that ReadonlySet would make readability depend on which plugins
