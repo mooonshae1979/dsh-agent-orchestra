@@ -37,4 +37,14 @@ t('task-done no matching task → empty subject', () => {
   assert.equal(r.taskSubject, '')
 })
 
+t('task-done from captain matches captainSessionId', () => {
+  const teamsC = [{ captainSessionId: 'cap-1', members: [], tasks: [{ id: 't1', subject: 'x' }] }]
+  const r = enrichBubble({ kind: 'task-done', fromMember: 'captain', fromRole: '', fromId: '', taskId: 't1', text: 'o', ts: 1 }, teamsC)
+  assert.equal(r.sessionId, 'cap-1')
+})
+t('captain but no captainSessionId → empty sessionId', () => {
+  const r = enrichBubble({ kind: 'task-done', fromMember: 'captain', fromRole: '', fromId: '', taskId: 't1', text: 'o', ts: 1 }, [{ members: [] }])
+  assert.equal(r.sessionId, '')
+})
+
 console.log('\nbubble-enrich: ' + passed + ' passed')
