@@ -1,28 +1,56 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AgentOrchestraBubbleData } from './agent-orchestra-bubble-definition.ts'
 import { collapseText } from './bubble-pure.ts'
+import { enrichBubble, type EnrichTeam } from './bubble-enrich.ts'
 import css from './AgentOrchestraBubble.module.css'
 
-export interface BubbleProps { data: AgentOrchestraBubbleData }
+export interface BubbleProps { data: AgentOrchestraBubbleData; openSession?: (id: string) => void }
 
 /** One member's interaction bubble. Defensive: never throws on bad data. */
-export function AgentOrchestraBubble({ data }: BubbleProps) {
+export function AgentOrchestraBubble({ data, openSession }: BubbleProps) {
   const [expanded, setExpanded] = useState(false)
+  const [teams, setTeams] = useState<readonly EnrichTeam[]>([])
+  useEffect(() => {
+    let cancelled = false
+    const load = async (): Promise<void> => {
+      try {
+        const res = await fetch('/plugins/dsh-agent-orchestra/state', { cache: 'no-store' })
+        if (!res.ok) return
+        const body = (await res.json()) as { teams?: readonly EnrichTeam[] }
+        if (!cancelled && Array.isArray(body?.teams)) setTeams(body.teams)
+      } catch {
+        // Host restarting; keep prior/empty enrichment, never throw.
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [])
+  const enr = enrichBubble(data, teams)
   const member = data?.fromMember ? data.fromMember : '未知成员'
-  const role = data?.fromRole ? (' · ' + data.fromRole) : ''
+  const roleText = (data?.fromRole || enr.role) ? (' · ' + (data.fromRole || enr.role)) : ''
   const text = (data?.text ?? '').trim()
   const { excerpt, truncated } = collapseText(text)
   const body = (truncated && !expanded) ? excerpt : (text || '（无正文）')
   const time = data?.ts ? new Date(data.ts).toLocaleTimeString() : ''
+  const subject = data?.kind === 'task-done' ? (enr.taskSubject || data.taskSubject || '') : ''
   const meta = data?.kind === 'member-message'
     ? ('→ ' + (data.toMember || 'captain'))
-    : (data?.kind === 'task-done' ? ('完成任务 ' + (data.taskId || '') + (data.taskSubject ? ': ' + data.taskSubject : '')) : '')
+    : (data?.kind === 'task-done' ? ('完成任务 ' + (data.taskId || '') + (subject ? ': ' + subject : '')) : '')
+  const canNavigate = Boolean(enr.sessionId) && typeof openSession === 'function'
+  const rootProps = {
+    className: css.root,
+    'data-bubble-kind': data?.kind ?? '',
+    'data-bubble-from': data?.fromMember ?? '',
+    ...(canNavigate
+      ? { onClick: () => openSession(enr.sessionId), 'data-navigable': '', title: ('打开 ' + member + ' 的对话') }
+      : {}),
+  }
   return (
-    <div className={css.root} data-bubble-kind={data?.kind ?? ''} data-bubble-from={data?.fromMember ?? ''}>
+    <div {...rootProps}>
       <div className={css.head}>
         <span className={css.avatar}>{member.trim().slice(0, 1).toUpperCase() || '?'}</span>
         <span className={css.name}>{member}</span>
-        <span className={css.role}>{role}</span>
+        <span className={css.role}>{roleText}</span>
         <span className={css.time}>{time}</span>
       </div>
       <div className={css.meta}>{meta}</div>
