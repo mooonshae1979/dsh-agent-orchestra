@@ -14,9 +14,11 @@ export function AgentOrchestraBubble({ data, openSession }: BubbleProps) {
   const [teams, setTeams] = useState<readonly EnrichTeam[]>([])
   useEffect(() => {
     let cancelled = false
-    void loadTeams().then((t) => {
-      if (!cancelled) setTeams(t)
-    })
+    void loadTeams()
+      .then((t) => {
+        if (!cancelled) setTeams(t)
+      })
+      .catch(() => undefined) // defensive: loadTeams should never reject, but guard anyway
     return () => { cancelled = true }
   }, [])
   const enr = enrichBubble(data, teams)
