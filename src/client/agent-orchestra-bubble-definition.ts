@@ -27,9 +27,9 @@ export interface MutableBubbleState {
   readonly fromMember: string
   readonly fromRole: string
   readonly fromId: string
-  readonly toMember: string | undefined
-  readonly taskId: string | undefined
-  readonly taskSubject: string | undefined
+  readonly toMember?: string
+  readonly taskId?: string
+  readonly taskSubject?: string
   readonly text: string
   readonly ts: number
   readonly accepted: boolean
