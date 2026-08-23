@@ -3,6 +3,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { AgentOrchestraBubbleData } from './agent-orchestra-bubble-definition.ts'
 import { collapseText } from './bubble-pure.ts'
 import { enrichBubble, type EnrichTeam } from './bubble-enrich.ts'
+import { loadTeams } from './bubble-teams.ts'
 import css from './AgentOrchestraBubble.module.css'
 
 export interface BubbleProps { data: AgentOrchestraBubbleData; openSession?: (id: SessionId) => void }
@@ -13,17 +14,11 @@ export function AgentOrchestraBubble({ data, openSession }: BubbleProps) {
   const [teams, setTeams] = useState<readonly EnrichTeam[]>([])
   useEffect(() => {
     let cancelled = false
-    const load = async (): Promise<void> => {
-      try {
-        const res = await fetch('/plugins/dsh-agent-orchestra/state', { cache: 'no-store' })
-        if (!res.ok) return
-        const body = (await res.json()) as { teams?: readonly EnrichTeam[] }
-        if (!cancelled && Array.isArray(body?.teams)) setTeams(body.teams)
-      } catch {
-        // Host restarting; keep prior/empty enrichment, never throw.
-      }
-    }
-    void load()
+    void loadTeams()
+      .then((t) => {
+        if (!cancelled) setTeams(t)
+      })
+      .catch(() => undefined) // defensive: loadTeams should never reject, but guard anyway
     return () => { cancelled = true }
   }, [])
   const enr = enrichBubble(data, teams)
