@@ -62,7 +62,7 @@ export function AgentOrchestraCard({ node, openSession, currentSessionId }: Agen
           if (!response.ok) continue
           const body = (await response.json()) as { teams?: readonly ActivityTeam[] }
           const found = Array.isArray(body.teams)
-            ? body.teams.find((team) => team.teamId === data.teamId && (owner === '' || team.captainSessionId === owner))
+            ? body.teams.find((team) => team.teamId === data.teamId)
             : undefined
           if (found !== undefined) {
             if (!cancelled) setSnapshot(found)
