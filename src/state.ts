@@ -4,13 +4,13 @@
  * State lives on disk under `<workspace>/<stateDir>/<teamId>/`:
  * - `team.json` — the durable {@link TeamState} record
  * - `inbox/<agentKey>.jsonl` — one JSONL mailbox per agent (`captain` or a
- *   member name), mirroring the Claude Code AgentTeams mailbox layout
+ *   member name), mirroring the Claude Code AgentOrchestra mailbox layout
  *
  * All mutations run through an in-process per-team queue so read-modify-write
  * stays serial; `fs/promises` is used directly because the plugin owns this
  * bookkeeping (host-plane state, like session persistence) and the abstract
  * `fs` service offers no directory deletion.
- * @module dsh-agent-teams/state
+ * @module dsh-agent-orchestra/state
  */
 
 import { randomUUID } from 'node:crypto'
@@ -117,7 +117,7 @@ export async function readTeam(stateRoot: string, teamId: string): Promise<TeamS
     const raw = await readFile(join(stateRoot, teamId, 'team.json'), 'utf8')
     const value: unknown = JSON.parse(stripLeadingBom(raw))
     if (!isTeamState(value, teamId)) {
-      throw new Error(`invalid AgentTeams state in team "${teamId}"`)
+      throw new Error(`invalid AgentOrchestra state in team "${teamId}"`)
     }
     return value
   } catch (error: unknown) {

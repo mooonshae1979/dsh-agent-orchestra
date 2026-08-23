@@ -1,4 +1,4 @@
-/** Browser plugin for the AgentTeams activity floater and conversation card. */
+/** Browser plugin for the AgentOrchestra activity floater and conversation card. */
 
 import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import { createRoot } from 'react-dom/client'
@@ -6,8 +6,8 @@ import { createRoot } from 'react-dom/client'
 // slot, whose keyed renderer map lives in the ui-conversation contract.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { ActivityPanel } from './ActivityPanel.tsx'
-import { AgentTeamsCard, type AgentTeamsCardInjected } from './AgentTeamsCard.tsx'
-import { agentTeamsCardDefinition } from './agent-teams-card-definition.ts'
+import { AgentOrchestraCard, type AgentOrchestraCardInjected } from './AgentOrchestraCard.tsx'
+import { agentTeamsCardDefinition } from './agent-orchestra-card-definition.ts'
 
 /** Required services: conversation nodes, slots, and sessions navigation. */
 export const inject = ['conversationEvents', 'slots', 'sessions']
@@ -30,15 +30,15 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => () => {
     root.unmount()
     host.remove()
-  }, 'agent-teams: activity panel')
+  }, 'agent-orchestra: activity panel')
 
   ctx.conversationEvents.register(agentTeamsCardDefinition)
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
-    key: 'agent-teams',
-    inject: (): AgentTeamsCardInjected => ({
+    key: 'agent-orchestra',
+    inject: (): AgentOrchestraCardInjected => ({
       openSession: (id: SessionId) => { ctx.sessions.open(id) },
       currentSessionId: () => ctx.sessions.list.getSnapshot().current,
     }),
-  }, AgentTeamsCard))
+  }, AgentOrchestraCard))
 }

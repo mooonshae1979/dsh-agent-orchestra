@@ -2,11 +2,11 @@
  * Shared whale artwork lookup for the activity panel and the conversation
  * card: role keywords map to the packaged role images; the captain always
  * uses the lead whale.
- * @module dsh-agent-teams/client/artwork
+ * @module dsh-agent-orchestra/client/artwork
  */
 
 /** Artwork route prefix served by the plugin host half. */
-export const ART_BASE = '/plugins/dsh-agent-teams/assets/'
+export const ART_BASE = '/plugins/dsh-agent-orchestra/assets/'
 
 /** Whale role artwork per role keyword. */
 const ROLE_ART: ReadonlyArray<readonly [RegExp, string]> = [

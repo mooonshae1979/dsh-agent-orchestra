@@ -1,14 +1,14 @@
 /**
- * AgentTeams conversation card: a lightweight in-conversation summary shown
+ * AgentOrchestra conversation card: a lightweight in-conversation summary shown
  * when a team is created — the captain's name, the member roster with whale
  * avatars, and an entry point that re-activates the top-right activity
  * panel (useful after the floater was closed, or when re-opening an old
  * session for review).
  *
  * The fold anchors to the Harness's durable `tool/call` + `tool/result`
- * records for `agent_teams_create`. Those are first-party session events, so
+ * records for `orchestra_create`. Those are first-party session events, so
  * the card survives restarts without writing an out-of-repo event type.
- * @module dsh-agent-teams/client/card
+ * @module dsh-agent-orchestra/client/card
  */
 
 import type {
@@ -22,7 +22,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-session/types'
 
 /** Final keyed Chat payload for the team summary card. */
-export interface AgentTeamsCardData {
+export interface AgentOrchestraCardData {
   readonly teamId: string
   /** The captain session that owns this team (panel follows it). */
   readonly captainSessionId: string
@@ -37,19 +37,19 @@ export interface AgentTeamsCardData {
 declare module '@deepseek-ai/dsh-client-ui-conversation/client' {
   interface ChatNodeDataMap {
     /** Lightweight team summary card anchoring the conversation. */
-    'agent-teams': AgentTeamsCardData
+    'agent-orchestra': AgentOrchestraCardData
   }
 }
 
 /** Folded team record (the node's business state). */
-export interface AgentTeamsNodeState {
+export interface AgentOrchestraNodeState {
   readonly teamId: string
   readonly name: string
   readonly accepted: boolean
 }
 
 /** Parse the only create-call fields the historic card owns. */
-export function parseAgentTeamsCreateArgs(value: string): { teamId: string; name: string } | undefined {
+export function parseAgentOrchestraCreateArgs(value: string): { teamId: string; name: string } | undefined {
   try {
     const parsed: unknown = JSON.parse(value)
     if (typeof parsed !== 'object' || parsed === null || !('name' in parsed) || typeof parsed.name !== 'string') {
@@ -65,12 +65,12 @@ export function parseAgentTeamsCreateArgs(value: string): { teamId: string; name
 }
 
 /** Durable first-party tool events folded into one keyed Chat node. */
-export const agentTeamsCardDefinition: ConversationNodeDefinition<AgentTeamsNodeState> = {
-  kind: 'agent-teams',
+export const agentTeamsCardDefinition: ConversationNodeDefinition<AgentOrchestraNodeState> = {
+  kind: 'agent-orchestra',
   target: 'chat',
   match: (event) => {
-    if (event.type === 'tool/call' && event.data.name === 'agent_teams_create') {
-      return parseAgentTeamsCreateArgs(event.data.arguments) === undefined
+    if (event.type === 'tool/call' && event.data.name === 'orchestra_create') {
+      return parseAgentOrchestraCreateArgs(event.data.arguments) === undefined
         ? null
         : { id: String(event.data.callId), role: 'start' }
     }
@@ -81,10 +81,10 @@ export const agentTeamsCardDefinition: ConversationNodeDefinition<AgentTeamsNode
   },
   start: (_context, match) => {
     if (match.event.type !== 'tool/call') {
-      throw new Error('agent-teams card start requires agent_teams_create tool/call')
+      throw new Error('agent-orchestra card start requires orchestra_create tool/call')
     }
-    const parsed = parseAgentTeamsCreateArgs(match.event.data.arguments)
-    if (parsed === undefined) throw new Error('agent-teams card start requires valid create arguments')
+    const parsed = parseAgentOrchestraCreateArgs(match.event.data.arguments)
+    if (parsed === undefined) throw new Error('agent-orchestra card start requires valid create arguments')
     return { ...parsed, accepted: false }
   },
   update: (context, match) => {
@@ -96,11 +96,11 @@ export const agentTeamsCardDefinition: ConversationNodeDefinition<AgentTeamsNode
   },
   buildViewNode: (context): ChatConversationViewNode | null => {
     if (context.start === undefined) return null
-    const state = context.state as AgentTeamsNodeState
+    const state = context.state as AgentOrchestraNodeState
     if (!state.accepted) return null
     return {
       key: context.key,
-      kind: 'agent-teams',
+      kind: 'agent-orchestra',
       id: context.id,
       target: 'chat',
       anchorSeq: context.start.event.seq,
