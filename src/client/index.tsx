@@ -8,6 +8,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { ActivityPanel } from './ActivityPanel.tsx'
 import { AgentOrchestraCard, type AgentOrchestraCardInjected } from './AgentOrchestraCard.tsx'
 import { agentOrchestraCardDefinition } from './agent-orchestra-card-definition.ts'
+import { AgentOrchestraBubble } from './AgentOrchestraBubble.tsx'
+import { BubbleErrorBoundary } from './bubble-error-boundary.tsx'
 
 /** Required services: conversation nodes, slots, and sessions navigation. */
 export const inject = ['conversationEvents', 'slots', 'sessions']
@@ -41,4 +43,11 @@ export function apply(ctx: ClientContext): void {
       currentSessionId: () => ctx.sessions.list.getSnapshot().current,
     }),
   }, AgentOrchestraCard))
+
+  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
+    name: 'conversation.chat.node',
+    key: 'agent-orchestra-bubble',
+  }, (props: { data: never }) => (
+    <BubbleErrorBoundary><AgentOrchestraBubble data={props.data as never} /></BubbleErrorBoundary>
+  )))
 }
