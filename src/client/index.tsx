@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { ActivityPanel } from './ActivityPanel.tsx'
 import { AgentOrchestraCard, type AgentOrchestraCardInjected } from './AgentOrchestraCard.tsx'
-import { agentTeamsCardDefinition } from './agent-orchestra-card-definition.ts'
+import { agentOrchestraCardDefinition } from './agent-orchestra-card-definition.ts'
 
 /** Required services: conversation nodes, slots, and sessions navigation. */
 export const inject = ['conversationEvents', 'slots', 'sessions']
@@ -32,7 +32,7 @@ export function apply(ctx: ClientContext): void {
     host.remove()
   }, 'agent-orchestra: activity panel')
 
-  ctx.conversationEvents.register(agentTeamsCardDefinition)
+  ctx.conversationEvents.register(agentOrchestraCardDefinition)
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'agent-orchestra',

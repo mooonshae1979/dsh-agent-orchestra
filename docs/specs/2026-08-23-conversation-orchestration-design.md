@@ -5,7 +5,7 @@
 
 ## 1. 背景与定位
 
-现状：`dsh-agent-teams` 通过 `agent_teams_*` 工具让队长（当前会话主模型）用上下文轮询分发任务、收集结果；组员是不可见子代理，任务/接力全靠队长手动编排。
+现状：`dsh-agent-teams` 通过 `orchestra_*` 工具让队长（当前会话主模型）用上下文轮询分发任务、收集结果；组员是不可见子代理，任务/接力全靠队长手动编排。
 
 目标：让团队协作**由对话驱动**：
 - 用户在对话里 **@点名 给子 agent 派活**；
@@ -37,7 +37,7 @@
 [4] 为 step 分配成员 → 唤醒成员做该 step
 [5] 成员产出（output 文本 或 artifacts 文件路径）→ 队长读取
 [6] 按 workflow.next 决定下一步 → 打包产出 → 唤醒下一位
-       （标 membersDirect 的步骤：成员间用 agent_teams_send_message 直接互聊，队长只观察）
+       （标 membersDirect 的步骤：成员间用 orchestra_send_message 直接互聊，队长只观察）
    │
    ▼
 [7] 全部 steps 完成 → 汇总给用户
@@ -64,7 +64,7 @@
 | 文件 | 改动 |
 |---|---|
 | `src/types.ts` | `TeamMember` 增加 `provider`/`roleId`/`persona`；新增 `WorkflowDef`/`RoleDef`/`StepDef` 类型 |
-| `src/tools.ts` | 新增对话驱动编排工具；增强 `agent_teams_status` 回显 |
+| `src/tools.ts` | 新增对话驱动编排工具；增强 `orchestra_status` 回显 |
 | `src/members.ts` | `spawnMember` 支持成员级 provider；用 persona-builder 合成 persona |
 | `src/event-types.ts` | `member-added` 带 provider/model/mode |
 | `src/snapshot.ts` | 活动快照带 provider/model/mode 与 workflow 进度 |
@@ -73,12 +73,12 @@
 
 | 工具 | 作用 |
 |---|---|
-| `agent_teams_define_workflow` | 选/建工作流模板（预置或对话临时定义） |
-| `agent_teams_assemble` | 按任务 + 工作流实例化一组成员并建任务栈 |
-| `agent_teams_dispatch_step` | 队长把某 step 分派给某成员并唤醒 |
-| `agent_teams_relay` | 读上一步产出，按 `workflow.next` 打包，唤醒下一步（接力核心） |
-| `agent_teams_add_member` / `remove_member`（已有，增强） | 对话中途随时增删组员，不打断流程 |
-| `agent_teams_status`（已有，增强） | 回显成员 provider/model/mode + 当前 workflow 步骤进度 |
+| `orchestra_define_workflow` | 选/建工作流模板（预置或对话临时定义） |
+| `orchestra_assemble` | 按任务 + 工作流实例化一组成员并建任务栈 |
+| `orchestra_dispatch_step` | 队长把某 step 分派给某成员并唤醒 |
+| `orchestra_relay` | 读上一步产出，按 `workflow.next` 打包，唤醒下一步（接力核心） |
+| `orchestra_add_member` / `remove_member`（已有，增强） | 对话中途随时增删组员，不打断流程 |
+| `orchestra_status`（已有，增强） | 回显成员 provider/model/mode + 当前 workflow 步骤进度 |
 
 ## 4. 数据模型
 
@@ -143,8 +143,8 @@ interface StepDef {
 ## 6. 对话中动态增删组员 / 嵌套小组
 
 ### 动态增删
-- `agent_teams_add_member`：任意时刻现场创建成员（Role 模板 + 现场覆盖），不打断进行中的 workflow；新成员可被后续 step 使用。
-- `agent_teams_remove_member`：任意时刻移除成员（尽力打断其当前轮次），其未完成任务由队长决定重派/跳过；流程继续。
+- `orchestra_add_member`：任意时刻现场创建成员（Role 模板 + 现场覆盖），不打断进行中的 workflow；新成员可被后续 step 使用。
+- `orchestra_remove_member`：任意时刻移除成员（尽力打断其当前轮次），其未完成任务由队长决定重派/跳过；流程继续。
 
 ### 嵌套小组（轻量版）
 - `StepDef.subflow`：某一步内部再挂一个子 `WorkflowDef`。
@@ -176,7 +176,7 @@ interface StepDef {
 
 ### 组合 / 冒烟
 - 复用现有 temp-state 流程，验证：建 workflow → 实例化成员 → 派 step → 产出 → relay 打包 → 唤醒下一步 的完整链路（用 mock 成员/假 provider，不真跑 LLM）。
-- 验证 `agent_teams_status` 回显 provider/model/mode + workflow 进度。
+- 验证 `orchestra_status` 回显 provider/model/mode + workflow 进度。
 
 ### 真实 e2e（可选，后续）
 - 真实 DSH 会话里自然语言驱动（如"用写作流让 AI 小说家写一段、再评审"），核对事件流 + team.json + 最终汇总。

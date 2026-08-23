@@ -65,7 +65,7 @@ export function parseAgentOrchestraCreateArgs(value: string): { teamId: string; 
 }
 
 /** Durable first-party tool events folded into one keyed Chat node. */
-export const agentTeamsCardDefinition: ConversationNodeDefinition<AgentOrchestraNodeState> = {
+export const agentOrchestraCardDefinition: ConversationNodeDefinition<AgentOrchestraNodeState> = {
   kind: 'agent-orchestra',
   target: 'chat',
   match: (event) => {
