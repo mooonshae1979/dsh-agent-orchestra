@@ -20,6 +20,15 @@ export function enrichBubble(data, teams) {
             }
         }
     }
+    // Captain is not in members[]; allow task-done (from captain) to navigate.
+    if (sessionId === '' && from === 'captain') {
+        for (const team of teams) {
+            if (team && team.captainSessionId) {
+                sessionId = team.captainSessionId;
+                break;
+            }
+        }
+    }
     if (data.kind === 'task-done' && data.taskId) {
         for (const team of teams) {
             if (!team || !Array.isArray(team.tasks))

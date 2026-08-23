@@ -8,6 +8,7 @@ export interface EnrichTask { readonly id?: string; readonly subject?: string }
 export interface EnrichTeam {
   readonly members?: readonly EnrichMember[]
   readonly tasks?: readonly EnrichTask[]
+  readonly captainSessionId?: string
 }
 
 export interface BubbleEnrichment {
@@ -35,6 +36,12 @@ export function enrichBubble(
         if (role === '' && member.role) role = member.role
         if (sessionId === '' && member.id) sessionId = member.id
       }
+    }
+  }
+  // Captain is not in members[]; allow task-done (from captain) to navigate.
+  if (sessionId === '' && from === 'captain') {
+    for (const team of teams) {
+      if (team && team.captainSessionId) { sessionId = team.captainSessionId; break }
     }
   }
   if (data.kind === 'task-done' && data.taskId) {
