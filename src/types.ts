@@ -1,11 +1,11 @@
 /**
- * Durable AgentTeams state types.
+ * Durable AgentOrchestra state types.
  *
  * A team is one directory under the state root holding `team.json` plus an
  * `inbox/` of per-agent JSONL mailboxes. Members are continuable subagents
  * whose durable child session ids are recorded in the team file, so a team
  * survives harness restarts.
- * @module dsh-agent-teams/types
+ * @module dsh-agent-orchestra/types
  */
 
 /** Task lifecycle statuses in progression order. */

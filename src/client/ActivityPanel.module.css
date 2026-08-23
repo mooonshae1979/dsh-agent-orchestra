@@ -1,26 +1,26 @@
-/* AgentTeams top-right command panel. Relationship lines are semantic: captain
+/* AgentOrchestra top-right command panel. Relationship lines are semantic: captain
    delegation runs vertically through member rows; task dependencies run left
    to right by precomputed depth. All surfaces follow DSH design tokens. */
 
 :global(html) {
-  --agent-teams-panel-width: 388px;
+  --agent-orchestra-panel-width: 388px;
   /* Follow the better-sidebar plugin's width variable (0 when collapsed or
      when the plugin is absent), so the panel shifts left of that sidebar
-     instead of overlapping it. The layout shift (--agent-teams-panel-shift)
+     instead of overlapping it. The layout shift (--agent-orchestra-panel-shift)
      stays constant: both the panel and the conversation column move by the
      same amount, so their relative position is unchanged. */
-  --agent-teams-panel-right: calc(18px + var(--dsh-sidebar-width, 0px));
-  --agent-teams-panel-gap: 14px;
-  --agent-teams-panel-shift: calc(var(--agent-teams-panel-width) + 18px + var(--agent-teams-panel-gap));
+  --agent-orchestra-panel-right: calc(18px + var(--dsh-sidebar-width, 0px));
+  --agent-orchestra-panel-gap: 14px;
+  --agent-orchestra-panel-shift: calc(var(--agent-orchestra-panel-width) + 18px + var(--agent-orchestra-panel-gap));
 }
 
 /* The web shell owns no top-right slot. While this body-portal panel is open,
    its global marker lets only the center conversation column yield room. The
    sidebar stays anchored; the transcript and sticky composer share one smooth
    width transition because both live under the same conversation root. */
-:global(html[data-agent-teams-panel-open]) :global([data-phase='active']) {
+:global(html[data-agent-orchestra-panel-open]) :global([data-phase='active']) {
   box-sizing: border-box;
-  padding-right: var(--agent-teams-panel-shift);
+  padding-right: var(--agent-orchestra-panel-shift);
 }
 
 :global([data-phase='active']) {
@@ -31,7 +31,7 @@
 .badge {
   position: fixed;
   top: 64px;
-  right: var(--agent-teams-panel-right);
+  right: var(--agent-orchestra-panel-right);
   z-index: 2147483000;
   display: inline-flex;
   align-items: center;
@@ -96,11 +96,11 @@
 .panel {
   position: fixed;
   top: 64px;
-  right: var(--agent-teams-panel-right);
+  right: var(--agent-orchestra-panel-right);
   z-index: 2147483000;
   display: flex;
   flex-direction: column;
-  width: min(var(--agent-teams-panel-width), calc(100vw - 24px));
+  width: min(var(--agent-orchestra-panel-width), calc(100vw - 24px));
   /* Portal 浮层的包含块即视口（工作区父容器）：高度上限取父容器的 70%。 */
   max-height: 70dvh;
   box-sizing: border-box;
@@ -922,10 +922,10 @@
 
 @media (max-width: 960px) {
   :global(html) {
-    --agent-teams-main-shift: 0px;
+    --agent-orchestra-main-shift: 0px;
   }
 
-  :global(html[data-agent-teams-panel-open]) :global([data-phase='active']) {
+  :global(html[data-agent-orchestra-panel-open]) :global([data-phase='active']) {
     padding-right: 0;
   }
 }
@@ -933,7 +933,7 @@
 @media (max-width: 640px) {
   :global(html) {
     /* Keep the narrow-screen inset while still clearing the better-sidebar. */
-    --agent-teams-panel-right: calc(10px + var(--dsh-sidebar-width, 0px));
+    --agent-orchestra-panel-right: calc(10px + var(--dsh-sidebar-width, 0px));
   }
 
   .panel {

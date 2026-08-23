@@ -7,7 +7,7 @@
  * declaration merge without pulling in host-side `Context` augmentations
  * (dsh-session's index declares `Context.sessions: SessionStore`, which
  * collides with the browser runtime's `ISessions` under the same name).
- * @module dsh-agent-teams/event-types
+ * @module dsh-agent-orchestra/event-types
  */
 
 /** Opens one team record: the captain created the team. */
@@ -74,46 +74,46 @@ declare module '@deepseek-ai/dsh-session/types' {
      * Opens one team record.
      * @param data - stable team identity and display name.
      */
-    'agent-teams/team-created': AgentTeamsTeamCreatedData
+    'agent-orchestra/team-created': AgentTeamsTeamCreatedData
     /**
      * Records one team member.
      * @param data - team identity, member child session, and display identity.
      */
-    'agent-teams/member-added': AgentTeamsMemberAddedData
+    'agent-orchestra/member-added': AgentTeamsMemberAddedData
     /**
      * Records one member removal.
      * @param data - team identity and the member's child session id.
      */
-    'agent-teams/member-removed': AgentTeamsMemberRemovedData
+    'agent-orchestra/member-removed': AgentTeamsMemberRemovedData
     /**
      * Records one task creation.
      * @param data - team identity, task id, subject, dependencies, assignee.
      */
-    'agent-teams/task-created': AgentTeamsTaskCreatedData
+    'agent-orchestra/task-created': AgentTeamsTaskCreatedData
     /**
      * Records one task transition.
      * @param data - team identity, task id, and the new status/assignee/output.
      */
-    'agent-teams/task-updated': AgentTeamsTaskUpdatedData
+    'agent-orchestra/task-updated': AgentTeamsTaskUpdatedData
     /**
      * Records one mailbox message.
      * @param data - team identity, sender, recipient, and content.
      */
-    'agent-teams/message-sent': AgentTeamsMessageSentData
+    'agent-orchestra/message-sent': AgentTeamsMessageSentData
     /**
      * Closes one team record after deletion.
      * @param data - stable team identity.
      */
-    'agent-teams/team-deleted': AgentTeamsTeamDeletedData
+    'agent-orchestra/team-deleted': AgentTeamsTeamDeletedData
   }
 }
 
-/** The full set of `agent-teams/*` event names. */
+/** The full set of `agent-orchestra/*` event names. */
 export type AgentTeamsEventType =
-  | 'agent-teams/team-created'
-  | 'agent-teams/member-added'
-  | 'agent-teams/member-removed'
-  | 'agent-teams/task-created'
-  | 'agent-teams/task-updated'
-  | 'agent-teams/message-sent'
-  | 'agent-teams/team-deleted'
+  | 'agent-orchestra/team-created'
+  | 'agent-orchestra/member-added'
+  | 'agent-orchestra/member-removed'
+  | 'agent-orchestra/task-created'
+  | 'agent-orchestra/task-updated'
+  | 'agent-orchestra/message-sent'
+  | 'agent-orchestra/team-deleted'

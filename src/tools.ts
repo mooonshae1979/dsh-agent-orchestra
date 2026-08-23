@@ -1,12 +1,12 @@
 /**
- * The `agent_teams_*` model-facing tools.
+ * The `orchestra_*` model-facing tools.
  *
  * The captain (the agent that created the team) orchestrates: members are
  * continuable subagents it spawns and wakes. Members share the same tools and
- * drive their own task state, mirroring the Claude Code AgentTeams flow:
+ * drive their own task state, mirroring the Claude Code AgentOrchestra flow:
  * create team → add members → create tasks with dependencies → claim/assign →
  * work → report → status → delete.
- * @module dsh-agent-teams/tools
+ * @module dsh-agent-orchestra/tools
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -88,7 +88,7 @@ function captainLockKey(stateRoot: string, captainId: string): string {
 async function requireCaptainTeam(workspace: string, config: ToolsConfig, captain: Agent): Promise<TeamState> {
   const team = await findTeamByCaptain(stateRootOf(workspace, config), captain.id)
   if (team === undefined) {
-    throw new Error('you are not leading any team yet — call agent_teams_create first')
+    throw new Error('you are not leading any team yet — call orchestra_create first')
   }
   return team
 }
@@ -158,7 +158,7 @@ function requireMember(team: TeamState, name: string): TeamMember {
 function requireTask(team: TeamState, taskId: string): TeamTask {
   const task = team.tasks.find((candidate) => candidate.id === taskId)
   if (task === undefined) {
-    throw new Error(`no task "${taskId}" in team "${team.name}" — use agent_teams_status to list tasks`)
+    throw new Error(`no task "${taskId}" in team "${team.name}" — use orchestra_status to list tasks`)
   }
   return task
 }
@@ -174,8 +174,8 @@ function requireTask(team: TeamState, taskId: string): TeamTask {
 export function steerCaptainReport(captain: Pick<Agent, 'steer'>, from: string, content: string): boolean {
   try {
     captain.steer(createUserMessage({
-      content: [{ type: 'text', text: `AgentTeams message from member ${from}:\n\n${content}` }],
-      source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
+      content: [{ type: 'text', text: `AgentOrchestra message from member ${from}:\n\n${content}` }],
+      source: { kind: 'plugin', plugin: 'dsh-agent-orchestra' },
     }))
     return true
   } catch {
@@ -185,14 +185,14 @@ export function steerCaptainReport(captain: Pick<Agent, 'steer'>, from: string, 
 }
 
 /**
- * Register every `agent_teams_*` tool into the shared tools registry.
+ * Register every `orchestra_*` tool into the shared tools registry.
  * @param ctx - the plugin context (injects `tools`).
  * @param config - resolved tool config.
  */
-export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void {
+export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): void {
   ctx.tools.register(defineTool({
-    name: 'agent_teams_create',
-    description: 'Create a new AgentTeams team: you (the calling agent) become the captain. A captain leads one team at a time; create tasks and members afterwards with agent_teams_add_member and agent_teams_create_task.',
+    name: 'orchestra_create',
+    description: 'Create a new AgentOrchestra team: you (the calling agent) become the captain. A captain leads one team at a time; create tasks and members afterwards with orchestra_add_member and orchestra_create_task.',
     parameters: {
       name: { type: 'string', required: true, description: 'Name for the new team (used as its stable id).' },
       description: { type: 'string', description: 'Team purpose / the goal the team will work on.' },
@@ -241,7 +241,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
             taskSeq: 0,
           }
           await createTeamDir(stateRoot, state)
-          appendTeamEvent(ctx, captain.session, 'agent-teams/team-created', {
+          appendTeamEvent(ctx, captain.session, 'agent-orchestra/team-created', {
             teamId: state.id,
             captainSessionId: captain.id,
             name: state.name,
@@ -254,7 +254,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
   }))
 
   ctx.tools.register(defineTool({
-    name: 'agent_teams_add_member',
+    name: 'orchestra_add_member',
     description: 'Add a member to your team: spawns a durable continuable subagent with a member persona. The member waits for your messages and works on assigned tasks; it can message you and teammates. One team per captain, members are capped by config.',
     parameters: {
       name: { type: 'string', required: true, description: 'Unique member name inside the team.' },
@@ -308,7 +308,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         await spawnMember(ctx, memberRuntime(config), captain, fresh, member, config.stateDir, exec.signal)
         fresh.members.push(member)
         await writeTeam(stateRoot, fresh)
-        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-teams/member-added', {
+        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-orchestra/member-added', {
           teamId: fresh.id,
           memberId: member.id,
           name: member.name,
@@ -320,7 +320,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
   }))
 
   ctx.tools.register(defineTool({
-    name: 'agent_teams_remove_member',
+    name: 'orchestra_remove_member',
     description: 'Remove a member from your team: interrupts its live turn (best effort) and marks it removed. Its mailbox and past task outputs stay on disk.',
     parameters: {
       name: { type: 'string', required: true, description: 'Name of the member to remove.' },
@@ -350,7 +350,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         if (member.id !== '') interruptMember(ctx, captain, member.id)
         member.status = 'removed'
         await writeTeam(stateRoot, fresh)
-        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-teams/member-removed', {
+        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-orchestra/member-removed', {
           teamId: fresh.id,
           memberId: member.id,
         })
@@ -360,7 +360,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
   }))
 
   ctx.tools.register(defineTool({
-    name: 'agent_teams_create_task',
+    name: 'orchestra_create_task',
     description: 'Create a task in your team\'s task list. Tasks can depend on other tasks (dependencies): a task is only claimable once every dependency is completed. Optionally assign it to a member, who still claims it before working.',
     parameters: {
       subject: { type: 'string', required: true, description: 'Brief title for the task.' },
@@ -415,7 +415,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         fresh.taskSeq += 1
         fresh.tasks.push(task)
         await writeTeam(stateRoot, fresh)
-        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-teams/task-created', {
+        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-orchestra/task-created', {
           teamId: fresh.id,
           taskId: task.id,
           subject: task.subject,
@@ -433,7 +433,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
   }))
 
   ctx.tools.register(defineTool({
-    name: 'agent_teams_claim_task',
+    name: 'orchestra_claim_task',
     description: 'Claim a task for a member (or for yourself when you are the member). Blocked while any dependency is unfinished — the error lists the pending dependencies. The captain may claim on behalf of an assignee; a member may only claim tasks assigned to it (or unassigned).',
     parameters: {
       task_id: { type: 'string', required: true, description: 'The task id to claim.' },
@@ -498,7 +498,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         task.assignee = assignee
         task.updatedAt = Date.now()
         await writeTeam(stateRoot, fresh)
-        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-updated', {
+        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-orchestra/task-updated', {
           teamId: fresh.id,
           taskId: task.id,
           status: task.status,
@@ -510,7 +510,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
   }))
 
   ctx.tools.register(defineTool({
-    name: 'agent_teams_update_task',
+    name: 'orchestra_update_task',
     description: 'Update a task\'s status and/or write its output. Transitions: claimed → in_progress → completed|failed|cancelled (pending may also be cancelled). The captain may update any task; a member may only update tasks assigned to it. Set output when completing or failing a task.',
     parameters: {
       task_id: { type: 'string', required: true, description: 'The task id to update.' },
@@ -557,7 +557,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         if (args.output !== undefined) task.output = args.output
         task.updatedAt = Date.now()
         await writeTeam(stateRoot, fresh)
-        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/task-updated', {
+        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-orchestra/task-updated', {
           teamId: fresh.id,
           taskId: task.id,
           status: task.status,
@@ -574,8 +574,8 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
   }))
 
   ctx.tools.register(defineTool({
-    name: 'agent_teams_send_message',
-    description: 'Send a message to the captain or to a teammate. Messages go straight into the recipient\'s mailbox; when the captain agent is online the plugin also schedules live delivery (member recipients get the message as their next turn; a running captain sees it at the nearest model step). No relay is involved: teammates talk to each other directly, exactly like the Claude Code AgentTeams mailbox model.',
+    name: 'orchestra_send_message',
+    description: 'Send a message to the captain or to a teammate. Messages go straight into the recipient\'s mailbox; when the captain agent is online the plugin also schedules live delivery (member recipients get the message as their next turn; a running captain sees it at the nearest model step). No relay is involved: teammates talk to each other directly, exactly like the Claude Code AgentOrchestra mailbox model.',
     parameters: {
       to: { type: 'string', required: true, description: 'Recipient: "captain" or a member name.' },
       content: { type: 'string', required: true, description: 'The message text.' },
@@ -609,12 +609,12 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         // `from` may only be the caller's own identity: impersonating another
         // member (or the captain) would poison the mailbox and event records.
         if (args.from !== undefined && args.from !== from) {
-          throw new Error(`agent_teams_send_message: "from" must be your own identity ("${from}"), not "${args.from}"`)
+          throw new Error(`orchestra_send_message: "from" must be your own identity ("${from}"), not "${args.from}"`)
         }
         if (to === CAPTAIN_KEY) {
           const message = createMessage(from, CAPTAIN_KEY, args.content)
           await appendMailbox(stateRoot, fresh.id, CAPTAIN_KEY, message)
-          appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/message-sent', {
+          appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-orchestra/message-sent', {
             teamId: fresh.id,
             messageId: message.id,
             from,
@@ -627,7 +627,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         const recipient = requireMember(fresh, to)
         const message = createMessage(from, recipient.name, args.content)
         await appendMailbox(stateRoot, fresh.id, recipient.name, message)
-        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-teams/message-sent', {
+        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, caller.session), 'agent-orchestra/message-sent', {
           teamId: fresh.id,
           messageId: message.id,
           from,
@@ -653,7 +653,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         const senderText = prepared.from === CAPTAIN_KEY
           ? args.content
           : `Message from team member ${prepared.from}:\n\n${args.content}`
-        const text = `AgentTeams state policy: inspect ${config.stateDir}/${prepared.fresh.id}/ read-only; never edit team.json or inbox files directly. Use agent_teams_* tools for team state.\n\n${senderText}`
+        const text = `AgentOrchestra state policy: inspect ${config.stateDir}/${prepared.fresh.id}/ read-only; never edit team.json or inbox files directly. Use orchestra_* tools for team state.\n\n${senderText}`
         const accepted = await deliverToMember(ctx, captain, prepared.recipient.id, text, exec.signal)
         delivered = accepted ? 'wake' : 'mailbox'
       }
@@ -667,7 +667,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
   }))
 
   ctx.tools.register(defineTool({
-    name: 'agent_teams_status',
+    name: 'orchestra_status',
     description: 'Team snapshot: members with live activity and tasks with status/assignee/dependencies/output. Captains also see every team mailbox; members see only their own inbox. Poll this to watch progress.',
     parameters: {},
     output: {
@@ -750,7 +750,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
   }))
 
   ctx.tools.register(defineTool({
-    name: 'agent_teams_delete',
+    name: 'orchestra_delete',
     description: 'End your team: interrupts all members (best effort) and deletes the team\'s state directory (team file, tasks, mailboxes). Use when the team\'s work is done or abandoned.',
     parameters: {},
     output: {
@@ -777,7 +777,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         for (const member of fresh.members) {
           if (member.status !== 'removed' && member.id !== '') interruptMember(ctx, captain, member.id)
         }
-        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-teams/team-deleted', {
+        appendTeamEvent(ctx, captainSessionOf(ctx, fresh.captainSessionId, captain.session), 'agent-orchestra/team-deleted', {
           teamId: fresh.id,
         })
         // Archive, not delete: tasks (with their dependency graph) and the
