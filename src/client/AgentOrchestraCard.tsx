@@ -16,6 +16,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ActivityTeam } from './ActivityPanel.tsx'
 import type { AgentOrchestraCardData } from './agent-orchestra-card-definition.ts'
 import { LEAD_ART, memberArtUrl } from './artwork.ts'
+import { MemberReplyBubble } from './MemberReplyBubble.tsx'
 import css from './AgentOrchestraCard.module.css'
 
 /** Window event name the floater listens for to open itself. */
@@ -118,6 +119,14 @@ export function AgentOrchestraCard({ node, openSession, currentSessionId }: Agen
               )}
               <span className={css.memberName}>{member.name}</span>
             </button>
+          ))}
+        </div>
+      )}
+      {(snapshot?.captainInbox ?? []).length > 0 && (
+        <div className={css.inbox} data-agent-orchestra-inbox>
+          <div className={css.inboxTitle}>成员回答</div>
+          {snapshot.captainInbox.map((msg, idx) => (
+            <MemberReplyBubble key={idx} msg={msg} members={resolved.members} openSession={openSession} />
           ))}
         </div>
       )}

@@ -137,3 +137,129 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.inbox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 2px;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-line-normal);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-fill-neutral);
+}
+
+.inboxTitle {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.reply {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border-left: 3px solid var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-bg-module);
+  cursor: default;
+}
+
+.reply[data-navigable] {
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.reply[data-navigable]:hover {
+  border-left-color: var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-bg-fill-neutral);
+}
+
+.reply[data-navigable]:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 1px;
+}
+
+.replyHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.replyAvatar {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--dsw-alias-line-strong);
+  object-fit: cover;
+  background: #0B1D33;
+}
+
+.replyInitial {
+  display: inline-flex;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-fill-business);
+  color: var(--dsw-alias-label-on-fill);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.replyName {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replyRole {
+  flex: none;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replyBody {
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.replyToggle {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dsw-alias-state-business-primary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.replyToggle:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 1px;
+}
