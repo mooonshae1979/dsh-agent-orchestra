@@ -11,6 +11,7 @@ import { agentOrchestraCardDefinition } from './agent-orchestra-card-definition.
 import { memberMessageDefinition, memberSettledDefinition, taskDoneDefinition } from './agent-orchestra-bubble-definition.ts'
 import { AgentOrchestraBubble } from './AgentOrchestraBubble.tsx'
 import { BubbleErrorBoundary } from './bubble-error-boundary.tsx'
+import { MemberMessageCard } from './member-message-card.tsx'
 import type { AgentOrchestraBubbleData } from './agent-orchestra-bubble-definition.ts'
 
 /** Required services: conversation nodes, slots, and sessions navigation. */
@@ -76,4 +77,9 @@ export function apply(ctx: ClientContext): void {
   }, (props: { node: { data: AgentOrchestraBubbleData } } & { openSession: (id: SessionId) => void }) => (
     <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} openSession={props.openSession} /></BubbleErrorBoundary>
   )))
+
+  ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
+    name: 'tool.call.toolview',
+    key: 'orchestra_send_message',
+  }, MemberMessageCard))
 }
