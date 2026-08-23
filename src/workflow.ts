@@ -18,7 +18,7 @@ export function validateWorkflow(workflow: WorkflowDef): string[] {
   }
   const ids = new Set<string>()
   for (const step of workflow.steps) {
-    if (step === undefined || typeof step !== 'object' || typeof step.stepId !== 'string' || step.stepId.length === 0) {
+    if (step === undefined || step === null || typeof step !== 'object' || typeof step.stepId !== 'string' || step.stepId.length === 0) {
       errors.push('a step is missing a non-empty stepId')
       continue
     }
@@ -28,7 +28,7 @@ export function validateWorkflow(workflow: WorkflowDef): string[] {
     errors.push(`workflow "${String(workflow.id ?? '')}" has duplicate step ids`)
   }
   for (const step of workflow.steps) {
-    if (step === undefined || typeof step !== 'object' || typeof step.stepId !== 'string' || step.stepId.length === 0) {
+    if (step === undefined || step === null || typeof step !== 'object' || typeof step.stepId !== 'string' || step.stepId.length === 0) {
       continue
     }
     if (typeof step.goal !== 'string' || step.goal.length === 0) {

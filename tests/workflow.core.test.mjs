@@ -65,5 +65,9 @@ t('novelist role has novel tools whitelist', () => {
 t('validateWorkflow does not throw on malformed step entries', () => {
   assert.deepStrictEqual(validateWorkflow({ id: 'x', name: 'x', steps: [undefined] }).length > 0, true)
 })
+t('validateWorkflow does not throw on null step entries', () => {
+  assert.ok(validateWorkflow({ id: 'x', name: 'x', steps: [null] }).length > 0)
+})
 
 console.log('\nworkflow: ' + passed + ' passed')
+
