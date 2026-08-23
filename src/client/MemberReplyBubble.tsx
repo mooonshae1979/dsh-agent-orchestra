@@ -32,7 +32,7 @@ export interface MemberReplyMsg {
 export interface MemberReplyBubbleProps {
   readonly msg: MemberReplyMsg
   readonly members: readonly MemberReplyMember[]
-  readonly openSession: (id: string) => void
+  readonly openSession: (id: SessionId) => void
 }
 
 function safeStr(value: unknown): string {
@@ -61,7 +61,7 @@ function MemberReplyBubbleInner({ msg, members, openSession }: MemberReplyBubble
     className: css.reply,
     'data-member-reply': '',
     ...(canNavigate
-      ? { onClick: () => openSession(id), 'data-navigable': '', title: `打开 ${name} 的对话` }
+      ? { onClick: () => openSession(id as SessionId), 'data-navigable': '', title: `打开 ${name} 的对话` }
       : {}),
   }
   return (

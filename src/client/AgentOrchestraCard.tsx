@@ -122,7 +122,7 @@ export function AgentOrchestraCard({ node, openSession, currentSessionId }: Agen
           ))}
         </div>
       )}
-      {(snapshot?.captainInbox ?? []).length > 0 && (
+      {Array.isArray(snapshot?.captainInbox) && snapshot.captainInbox.length > 0 && (
         <div className={css.inbox} data-agent-orchestra-inbox>
           <div className={css.inboxTitle}>成员回答</div>
           {snapshot.captainInbox.map((msg, idx) => (
