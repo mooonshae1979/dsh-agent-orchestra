@@ -1,6 +1,6 @@
 ## 验证 DSH 插件真的可用（实战方法）
 
-> 本文从 dsh-agent-teams 插件（多智能体团队协作 + Web UI 活动面板）的完整验证历程蒸馏而来。
+> 本文从 dsh-agent-orchestra 插件（多智能体团队协作 + Web UI 活动面板）的完整验证历程蒸馏而来。
 > 全部命令都真实执行过；每一层都踩过坑，坑已标注在对应步骤。原则：**不碰正在运行的实例，验证在独立 profile / 独立端口 / 临时目录上进行，测完清理**。
 
 ### 验证金字塔总览
@@ -86,15 +86,15 @@ console.log('\nall checks passed')
 
 ```sh
 # 手动构造 scratch profile（不必走 pnpm）
-mkdir -p ~/.dsh/profiles/agent-teams-check/node_modules
-ln -sfn /absolute/path/to/plugin ~/.dsh/profiles/agent-teams-check/node_modules/<pkg>
-cat > ~/.dsh/profiles/agent-teams-check/package.json <<'EOF'
+mkdir -p ~/.dsh/profiles/agent-orchestra-check/node_modules
+ln -sfn /absolute/path/to/plugin ~/.dsh/profiles/agent-orchestra-check/node_modules/<pkg>
+cat > ~/.dsh/profiles/agent-orchestra-check/package.json <<'EOF'
 { "name": "dsh-profile-check", "private": true, "dependencies": {},
   "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "<pkg>"] } } }
 EOF
-printf '[]\n' > ~/.dsh/profiles/agent-teams-check/cordis.patch.yml   # 必须是顶层数组！
+printf '[]\n' > ~/.dsh/profiles/agent-orchestra-check/cordis.patch.yml   # 必须是顶层数组！
 
-dsh --profile agent-teams-check --dump-config | grep -A 4 "id: agent-teams"
+dsh --profile agent-orchestra-check --dump-config | grep -A 4 "id: agent-orchestra"
 ```
 
 - `--dump-config` **离线组合**（`composeEntries` 应用 patch 层），不 boot 服务、不动运行实例
@@ -118,8 +118,8 @@ dsh --profile headless --dump-config   # 确认组合树含插件行
 #### 2.2 真实 LLM 任务设计
 
 ```sh
-mkdir -p /tmp/agent-teams-e2e && cd /tmp/agent-teams-e2e
-dsh --profile headless "用 AgentTeams 完成一个小任务：创建团队'标题方案'，加 2 个成员（alice 负责研究，bob 负责撰写），创建 2 个任务（t2 依赖 t1）分配给他们，唤醒他们完成，最后汇总产出。任务要小，每个成员只做一个简单任务。"
+mkdir -p /tmp/agent-orchestra-e2e && cd /tmp/agent-orchestra-e2e
+dsh --profile headless "用 AgentOrchestra 完成一个小任务：创建团队'标题方案'，加 2 个成员（alice 负责研究，bob 负责撰写），创建 2 个任务（t2 依赖 t1）分配给他们，唤醒他们完成，最后汇总产出。任务要小，每个成员只做一个简单任务。"
 ```
 
 设计要点（控制 token 与可判定性）：
@@ -132,14 +132,14 @@ dsh --profile headless "用 AgentTeams 完成一个小任务：创建团队'标�
 
 ```sh
 # 团队状态文件（headless 的 cwd = 调用目录；团队删除后会归档/清空）
-ls -la /tmp/agent-teams-e2e/.agent-teams/
+ls -la /tmp/agent-orchestra-e2e/.agent-orchestra/
 
 # 会话日志：每个会话一个目录，成员子会话是独立 uuid 目录
-ls -lt ~/.dsh/sessions/--private-tmp-agent-teams-e2e--/
+ls -lt ~/.dsh/sessions/--private-tmp-agent-orchestra-e2e--/
 
-# 事件流（zstd 压缩，用 zstdcat 解压后数 agent-teams/* 事件）
+# 事件流（zstd 压缩，用 zstdcat 解压后数 agent-orchestra/* 事件）
 zstdcat ~/.dsh/sessions/<ws>/session-<id>/session.jsonl.zstd \
-  | grep -o '"type":"agent-teams/[^"]*"' | sort | uniq -c
+  | grep -o '"type":"agent-orchestra/[^"]*"' | sort | uniq -c
 # 预期：team-created ×1, member-added ×2, task-created ×2, task-updated ×N,
 #       message-sent ×N, team-deleted ×1（数量与流程一一对应）
 ```
@@ -154,11 +154,11 @@ zstdcat ~/.dsh/sessions/<ws>/session-<id>/session.jsonl.zstd \
 
 ```sh
 # 从零安装（内测 npm 流程，peer 从内测 registry 解析）：
-npx -p @deepseek-ai/dsh@0.0.1-rc.1 dsh plugin --profile agent-teams-beta add @deepseek-ai/dsh-base
-npx -p @deepseek-ai/dsh@0.0.1-rc.1 dsh plugin --profile agent-teams-beta add @deepseek-ai/dsh-web-app
-npx -p @deepseek-ai/dsh@0.0.1-rc.1 dsh plugin --profile agent-teams-beta add /abs/path/to/dsh-agent-teams
+npx -p @deepseek-ai/dsh@0.0.1-rc.1 dsh plugin --profile agent-orchestra-beta add @deepseek-ai/dsh-base
+npx -p @deepseek-ai/dsh@0.0.1-rc.1 dsh plugin --profile agent-orchestra-beta add @deepseek-ai/dsh-web-app
+npx -p @deepseek-ai/dsh@0.0.1-rc.1 dsh plugin --profile agent-orchestra-beta add /abs/path/to/dsh-agent-orchestra
 # 启动（managed background task，保存 task id；CLI 与 bundle 同通道）：
-npx -p @deepseek-ai/dsh@0.0.1-rc.1 dsh --profile agent-teams-beta --host 127.0.0.1 --port 3081
+npx -p @deepseek-ai/dsh@0.0.1-rc.1 dsh --profile agent-orchestra-beta --host 127.0.0.1 --port 3081
 # 看到精确 URL 后再 curl
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3081/
 ```
@@ -178,7 +178,7 @@ import sys, json, re
 html = sys.stdin.read()
 m = re.search(r'window.__DSH_BOOT__ = (.*?)</script>', html, re.S)
 g = json.loads(m.group(1))
-print(any('agent-teams' in e['id'] for e in g.get('entries', [])))
+print(any('agent-orchestra' in e['id'] for e in g.get('entries', [])))
 "
 # client bundle 与自定义数据路由
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3081/plugins/<pkg>/client.js
@@ -192,12 +192,12 @@ curl -s "http://127.0.0.1:3081/plugins/<pkg>/state?archived=1"
 
 ```js
 // 每个 heredoc 先复用任务空间 + 打开/复用 tab
-const task = await useOrCreateTaskSpace('agent-teams webui test')
+const task = await useOrCreateTaskSpace('agent-orchestra webui test')
 await openOrReuseTab('http://127.0.0.1:3081', { wait: true, timeout: 30 })
 
-// 组件必须挂 data-* 探针属性（data-agent-teams-activity / data-task-state / data-member-running ...）
+// 组件必须挂 data-* 探针属性（data-agent-orchestra-activity / data-task-state / data-member-running ...）
 const probe = await js(String.raw`(() => {
-  const panel = document.querySelector('[data-agent-teams-activity]')
+  const panel = document.querySelector('[data-agent-orchestra-activity]')
   if (!panel) return { panel: false }
   return {
     panel: true,
@@ -224,7 +224,7 @@ cliLog(JSON.stringify(probe, null, 1))
 #### 3.4 截图存档
 
 ```js
-await captureScreenshot('/tmp/agent-teams-panel.png')   // 返回文件路径
+await captureScreenshot('/tmp/agent-orchestra-panel.png')   // 返回文件路径
 ```
 
 每轮关键状态各存一张（运行中 / 终态 / 归档复盘），供人类核对视觉；DOM 探针的文本证据与截图互补（探针是断言，截图是人工目检）。
@@ -251,17 +251,17 @@ await captureScreenshot('/tmp/agent-teams-panel.png')   // 返回文件路径
 - [ ] pnpm build             # lib/ + lib/client.js（closure-factory）产出
 - [ ] node -e "import('./lib/index.js')..."  # 导出 name/inject/Config/apply
 - [ ] pnpm verify            # 冒烟全 PASS（纯规则/持久化/状态函数/fold）
-- [ ] dsh --profile agent-teams-check --dump-config | grep "id: <插件>"   # 组合树含插件行
+- [ ] dsh --profile agent-orchestra-check --dump-config | grep "id: <插件>"   # 组合树含插件行
 
 ### 真实端到端（独立 headless profile）
 - [ ] dsh plugin --profile headless add /abs/path/<pkg>
 - [ ] dsh --profile headless "<小任务，明确要求走插件流程>"
 - [ ] 任务输出含完整流程叙述（建队/成员/任务/产出/删队）
-- [ ] 落盘：.agent-teams 状态文件存在（或按预期归档）
-- [ ] zstdcat 会话日志：agent-teams/* 事件数量与流程一一对应
+- [ ] 落盘：.agent-orchestra 状态文件存在（或按预期归档）
+- [ ] zstdcat 会话日志：agent-orchestra/* 事件数量与流程一一对应
 
 ### GUI（独立 web 实例 3081 + ego-browser）
-- [ ] dsh --profile agent-teams-web --patch port.patch.yml 启动，index 200
+- [ ] dsh --profile agent-orchestra-web --patch port.patch.yml 启动，index 200
 - [ ] window.__DSH_BOOT__ 名册含插件（无则查 dsh.client + ./client export + bundle）
 - [ ] /plugins/<pkg>/client.js 200；自定义路由（state/assets）200 且内容正确
 - [ ] 新建会话跑任务 → 面板/卡片出现（DOM 探针 data-* 断言通过）

@@ -1,10 +1,10 @@
 /**
- * AgentTeams activity panel: the top-right floater monitoring every team.
+ * AgentOrchestra activity panel: the top-right floater monitoring every team.
  *
  * Modeled on the Claude Code desktop SessionActivityPanel: a fixed glass
  * panel at the top-right corner. On wide viewports it cooperatively makes the
  * conversation column yield space; narrow viewports keep overlay mode. It
- * polls the host `/plugins/dsh-agent-teams/state` route for
+ * polls the host `/plugins/dsh-agent-orchestra/state` route for
  * server-side snapshots (durable files + live subagent activity), with a
  * collapsed badge that auto-expands once when activity appears. Archived
  * teams stay available for the owning conversation after live work ends.
@@ -12,7 +12,7 @@
  * The floater mounts through a body portal (no top-right slot exists in the
  * web shell); it is not a conversation node — the in-conversation panel was
  * removed in favor of this always-available monitor.
- * @module dsh-agent-teams/client/activity
+ * @module dsh-agent-orchestra/client/activity
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
@@ -24,8 +24,8 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ObservableSnapshot, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
 import { activityPanelExpandedForSession, relatedTaskIds, taskStages } from './activity-model.ts'
 import { ACTION_ART, LEAD_ART, memberArtUrl } from './artwork.ts'
-import { OPEN_PANEL_EVENT } from './AgentTeamsCard.tsx'
-import type { AgentTeamsCardData } from './agent-teams-card-definition.ts'
+import { OPEN_PANEL_EVENT } from './AgentOrchestraCard.tsx'
+import type { AgentOrchestraCardData } from './agent-orchestra-card-definition.ts'
 import css from './ActivityPanel.module.css'
 
 /** Poll cadence for the host snapshot route. */
@@ -39,9 +39,9 @@ const AUTOCLOSE_GRACE_MS = 2000
  */
 const AUTO_OPEN_SETTLE_MS = 4000
 /** Host route serving team snapshots. */
-const STATE_URL = '/plugins/dsh-agent-teams/state'
+const STATE_URL = '/plugins/dsh-agent-orchestra/state'
 /** Root marker shared with the panel CSS while the portal is expanded. */
-const PANEL_OPEN_ATTRIBUTE = 'data-agent-teams-panel-open'
+const PANEL_OPEN_ATTRIBUTE = 'data-agent-orchestra-panel-open'
 
 /** One member row of a host snapshot. */
 export interface ActivityMember {
@@ -140,7 +140,7 @@ function CollapsedBadge({ count, busy, onClick }: {
   readonly onClick: () => void
 }) {
   return (
-    <button type="button" className={css.badge} data-busy={busy} onClick={onClick} aria-label={`AgentTeams 活动，${count} 个团队`}>
+    <button type="button" className={css.badge} data-busy={busy} onClick={onClick} aria-label={`AgentOrchestra 活动，${count} 个团队`}>
       <span className={css.badgeDot} data-busy={busy} aria-hidden />
       <span className={css.badgeCount}>{count}</span>
     </button>
@@ -440,7 +440,7 @@ export function ActivityPanel({ sessionsList, openSession }: {
   const [openOwner, setOpenOwner] = useState<SessionId | undefined>()
   const [autoOpened, setAutoOpened] = useState(false)
   const [wasActive, setWasActive] = useState(false)
-  const [historic, setHistoric] = useState<ReadonlyMap<string, { data: AgentTeamsCardData; owner: string }>>(new Map())
+  const [historic, setHistoric] = useState<ReadonlyMap<string, { data: AgentOrchestraCardData; owner: string }>>(new Map())
   const current = useSyncExternalStore(
     sessionsList.subscribe,
     sessionsList.getSnapshot,
@@ -511,7 +511,7 @@ export function ActivityPanel({ sessionsList, openSession }: {
       if (activeSession === undefined) return
       setOpenOwner(activeSession)
       setOpen(true)
-      const detail = (event as CustomEvent<AgentTeamsCardData>).detail
+      const detail = (event as CustomEvent<AgentOrchestraCardData>).detail
       if (detail?.teamId !== undefined) {
         // A card from a log that predates captainSessionId belongs to the
         // session that activated it (the current one at injection time).
@@ -601,10 +601,10 @@ export function ActivityPanel({ sessionsList, openSession }: {
         }} />
       )}
       {expanded && (
-        <aside className={css.panel} data-agent-teams-activity>
+        <aside className={css.panel} data-agent-orchestra-activity>
           <header className={css.panelHead}>
             <span className={css.panelTitle}>
-              AgentTeams 活动
+              AgentOrchestra 活动
               <span className={css.panelDot} data-busy={busy} aria-hidden />
             </span>
             <button

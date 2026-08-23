@@ -1,7 +1,7 @@
 {
   "name": "dsh-agent-orchestra",
   "version": "0.1.0",
-  "description": "dsh-agent-teams 的对话式编排进化版：对话驱动多 Agent 团队（队长=分配者），工作流模板接力，按任务现场定制成员身份/模型/模式，支持写作流、动态增删组员与轻量子流程",
+  "description": "对话驱动多 Agent 团队编排：队长为分配者，工作流模板接力，按任务现场定制成员身份/模型/模式，支持写作流、动态增删组员与轻量子流程（dsh-agent-teams 的进化版）",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -19,7 +19,7 @@
   },
   "files": [
     "lib",
-    "assets/agent-teams",
+    "assets/agent-orchestra",
     "cordis.patch.yml",
     "README.md",
     "assets/ui.png"

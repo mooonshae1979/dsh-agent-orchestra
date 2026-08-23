@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Offline smoke verification for dsh-agent-teams.
+ * Offline smoke verification for dsh-agent-orchestra.
  *
  * Runs the pure team-logic rules, the on-disk persistence flow, and the
  * browser workbench fold (events -> workbench projection) against throwaway
@@ -29,7 +29,7 @@ import {
   withTeamLock,
 } from '../lib/state.js'
 import { activityPanelExpandedForSession, relatedTaskIds, taskStages } from '../lib/client/activity-model.js'
-import { parseAgentTeamsCreateArgs } from '../lib/client/agent-teams-card-definition.js'
+import { parseAgentOrchestraCreateArgs } from '../lib/client/agent-orchestra-card-definition.js'
 import { steerCaptainReport } from '../lib/tools.js'
 
 let failures = 0
@@ -42,7 +42,7 @@ function check(label, condition, detail = '') {
   }
 }
 
-console.log('dsh-agent-teams offline verification')
+console.log('dsh-agent-orchestra offline verification')
 console.log('1/5 pure rules')
 check("sanitizeKey('My Team!') -> 'my-team'", sanitizeKey('My Team!') === 'my-team')
 check("sanitizeKey('!!!') falls back to 'team'", sanitizeKey('!!!') === 'team')
@@ -64,7 +64,7 @@ check('pending dep blocks', unsatisfiedDependencies(tasks, ['t2']).length === 1)
 check('failed dep blocks too', unsatisfiedDependencies(tasks, ['t3']).length === 1)
 
 console.log('3/5 on-disk team flow (temp dir)')
-const stateRoot = await mkdtemp(join(tmpdir(), 'dsh-agent-teams-verify-'))
+const stateRoot = await mkdtemp(join(tmpdir(), 'dsh-agent-orchestra-verify-'))
 try {
   const team = {
     name: 'Verify Team',
@@ -224,10 +224,10 @@ check(
 )
 check(
   'agent team cards derive a stable id from the standard create tool call',
-  JSON.stringify(parseAgentTeamsCreateArgs('{"name":" Repo Review 2W! "}'))
+  JSON.stringify(parseAgentOrchestraCreateArgs('{"name":" Repo Review 2W! "}'))
     === JSON.stringify({ teamId: 'repo-review-2w', name: 'Repo Review 2W!' }),
 )
-check('malformed create tool arguments do not create a card', parseAgentTeamsCreateArgs('{bad') === undefined)
+check('malformed create tool arguments do not create a card', parseAgentOrchestraCreateArgs('{bad') === undefined)
 
 const captainDeliveries = []
 const captainSteered = steerCaptainReport(
@@ -240,7 +240,7 @@ check(
   captainSteered
     && captainDeliveries.length === 1
     && captainDeliveries[0]?.content[0]?.type === 'text'
-    && captainDeliveries[0]?.content[0]?.text === 'AgentTeams message from member alice:\n\nfinished t1',
+    && captainDeliveries[0]?.content[0]?.text === 'AgentOrchestra message from member alice:\n\nfinished t1',
 )
 check(
   'failed live captain delivery falls back to the durable mailbox',

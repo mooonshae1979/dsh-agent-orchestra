@@ -1,8 +1,8 @@
 # 从零开发一个 DeepSeek Harness（DSH）插件
 
-> 本文是 dsh-agent-teams 插件（host 工具 + 浏览器活动面板 + 对话流卡片）开发全过程的经验蒸馏。
+> 本文是 dsh-agent-orchestra 插件（host 工具 + 浏览器活动面板 + 对话流卡片）开发全过程的经验蒸馏。
 > 覆盖 bundle 插件从骨架、host 面、client 面、构建安装到踩坑修复的完整流程，供 coding agent 直接照做。
-> 参考实现：`dsh-agent-teams`（成品）、DSH 仓库 `packages/workflow/tool-workflow`（工具插件模板）、
+> 参考实现：`dsh-agent-orchestra`（成品）、DSH 仓库 `packages/workflow/tool-workflow`（工具插件模板）、
 > `packages/client/tsdown.client.ts`（client bundle 协议）、`packages/bundle/base|cordis.patch.yml`（host 组合）、
 > `packages/client/modules/src/index.ts`（浏览器名册扫描）、`packages/client/ui-workflow-run`（对话流 UI 模板）。
 
@@ -147,7 +147,7 @@ export const name = 'my-plugin'
 export const inject = ['tools', 'subagents', 'systemPrompt', 'agents']
 
 export interface Config { stateDir?: string }
-export const Config: z<Config> = z.object({ stateDir: z.string().default('.agent-teams') })
+export const Config: z<Config> = z.object({ stateDir: z.string().default('.agent-orchestra') })
 
 export function apply(ctx: Context, config: Config): void {
   // 注册工具、prompt section、HTTP 路由……全部在 apply 里
@@ -233,7 +233,7 @@ ctx.effect(() => web.register({
 ### 2.5 状态持久化（文件 + 进程内锁）
 
 ```ts
-// 团队状态 = workspace 下 .agent-teams/<teamId>/team.json + inbox/*.jsonl
+// 团队状态 = workspace 下 .agent-orchestra/<teamId>/team.json + inbox/*.jsonl
 // 用 node:fs/promises 直接读写（插件自有簿记，不走沙箱 fs 服务；fs 服务无删除 API）
 const locks = new Map<string, Promise<unknown>>()
 export async function withTeamLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -254,9 +254,9 @@ export async function withTeamLock<T>(key: string, fn: () => Promise<T>): Promis
 
 ```ts
 // event-types.ts —— 事件类型 + SessionEventMap 合并，必须零 import！
-export interface AgentTeamsTeamCreatedData { readonly teamId: string; readonly name: string }
+export interface AgentOrchestraTeamCreatedData { readonly teamId: string; readonly name: string }
 declare module '@deepseek-ai/dsh-session/types' {
-  interface SessionEventMap { 'my-plugin/team-created': AgentTeamsTeamCreatedData }
+  interface SessionEventMap { 'my-plugin/team-created': AgentOrchestraTeamCreatedData }
 }
 ```
 
@@ -421,7 +421,7 @@ useEffect(() => {
 对话流内嵌 UI = 注册一个 Conversation Node（浏览器端 cordis）：
 
 ```ts
-// agent-teams-card-definition.ts
+// agent-orchestra-card-definition.ts
 import type { ChatConversationViewNode, ConversationNodeContext,
   ConversationNodeDefinition } from '@deepseek-ai/dsh-client-runtime/client'
 // 声明合并的两个关键 type-only import（见 5.3）：
@@ -493,7 +493,7 @@ ln -sfn /path/to/DSH/packages/core/tools     node_modules/@deepseek-ai/dsh-tools
 ```sh
 pnpm build
 # 内测阶段：dsh 来自官方 npm 包；本地路径或 git 地址安装插件（未发布 npm 前）
-npx -p @deepseek-ai/dsh dsh plugin --profile web add /absolute/path/to/dsh-agent-teams
+npx -p @deepseek-ai/dsh dsh plugin --profile web add /absolute/path/to/dsh-agent-orchestra
 # 重启 dsh（web 或 headless）后生效
 ```
 

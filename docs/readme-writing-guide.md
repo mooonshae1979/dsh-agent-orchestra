@@ -1,11 +1,11 @@
 ## DSH 插件 README 写作规范
 
 > 给 coding agent 写 DeepSeek Harness 插件 README 时照做的章节模板与写作规则。
-> 提炼自 `dsh-agent-teams` 成品 README 的多轮迭代（功能/原理/UI/工具/安装/配置/使用/验证/限制全结构），并对照 DSH 仓库内包 README 的风格（`packages/preset`、`packages/bundle`、`packages/client/ui-workflow-run`：精炼、表格化）。
+> 提炼自 `dsh-agent-orchestra` 成品 README 的多轮迭代（功能/原理/UI/工具/安装/配置/使用/验证/限制全结构），并对照 DSH 仓库内包 README 的风格（`packages/preset`、`packages/bundle`、`packages/client/ui-workflow-run`：精炼、表格化）。
 
 ### 0. 语言与篇幅策略
 
-- **独立插件项目**（面向安装用户，如 `dsh-agent-teams`）：中文为主，命令、工具名、标识符、字段名保留英文；解释性句子用中文。
+- **独立插件项目**（面向安装用户，如 `dsh-agent-orchestra`）：中文为主，命令、工具名、标识符、字段名保留英文；解释性句子用中文。
 - **DSH 仓库内包**（`packages/*/README.md`）：英文为主，一段话简介 + 分节 + 表格，每节不超过几段；仓库内 README 是给维护者/协作者的，不需要"安装/使用"教程。
 - 本文模板两种场景同构：结构顺序不变，语言与详略按读者切换。
 - 篇幅：独立插件 README 200–400 行封顶；超过说明某节在堆砌实现细节（见 §2 避免清单）。
@@ -66,7 +66,7 @@ dsh plugin --profile web add /absolute/path/to/<plugin>
 ```markdown
 | 字段 | 默认值 | 说明 |
 |---|---|---|
-| `stateDir` | `.agent-teams` | 状态目录名（工作区下） |
+| `stateDir` | `.agent-orchestra` | 状态目录名（工作区下） |
 | `memberProvider` | `spawn` | 成员子代理 provider |
 | `memberMaxDepth` | `1` | 成员再委派深度上限（`0` = 禁止） |
 ```
@@ -100,12 +100,12 @@ dsh plugin --profile web add /absolute/path/to/<plugin>
 
 - 每条限制 = **现象 + 原因/影响 + 缓解**，一条 bullet 内说完。例：
   - "成员只有在收到消息（被唤醒）后才行动，没有常驻轮询；……队长离线时消息留在邮箱、待队长下次操作时投递。"（现象 → 影响 → 缓解路径）
-  - "成员（模型）不总是严格走工具'仪式'（如完成时不调 `update_task`）——面板如实反映事件流，可能与磁盘真相有短暂偏差；队长以 `agent_teams_status`/文件为准汇总。"
+  - "成员（模型）不总是严格走工具'仪式'（如完成时不调 `update_task`）——面板如实反映事件流，可能与磁盘真相有短暂偏差；队长以 `orchestra_status`/文件为准汇总。"
 - **为什么重要**：限制节是"行为契约的负空间"——它提前回答用户必然遇到的问题（"为什么任务显示还没完成？"），防止把设计取舍误读成 bug；也是后续迭代的 TODO 清单来源。
 - 写**真实限制**而非套话：设计取舍（文件级持久化、单队长单团队）、环境依赖（全局角落无 slot 时 portal 自管几何；宽屏让位、窄屏 overlay）、模型行为（不守仪式）、边界（旧会话无历史事件）。
 - 每条给**缓解或指引**（"以 status 为准""待队长下次操作投递"），不写无解的抱怨。
 
-### 6. 五条可复用模式（自 `dsh-agent-teams` 提炼）
+### 6. 五条可复用模式（自 `dsh-agent-orchestra` 提炼）
 
 1. **能力接缝表开篇**：架构解释永远从"DSH 能力 | 插件用法"表格开始——比任何叙述都快地建立"它怎么融入 DSH"的心智模型。
 2. **验证命令全部可复制**：`cd /path/to/…` + 绝对路径 + 注释标注预期输出；用户可以直接粘贴执行，而不是"看图理解"。

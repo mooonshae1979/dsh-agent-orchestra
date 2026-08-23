@@ -1,42 +1,42 @@
 /**
- * AgentTeams conversation card: the lightweight in-conversation summary for
+ * AgentOrchestra conversation card: the lightweight in-conversation summary for
  * one team — the captain's whale avatar and name, the member roster as
  * clickable whale avatars (opening the member's subagent transcript), and
  * an "activity panel" button that re-activates the top-right floater.
  *
- * The floater and this card share the `agent-teams:open-panel` window event
+ * The floater and this card share the `agent-orchestra:open-panel` window event
  * so the card can summon the panel even after it was closed (or when an old
  * session is re-opened for review).
- * @module dsh-agent-teams/client/card
+ * @module dsh-agent-orchestra/client/card
  */
 
 import { useEffect, useMemo, useState } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ActivityTeam } from './ActivityPanel.tsx'
-import type { AgentTeamsCardData } from './agent-teams-card-definition.ts'
+import type { AgentOrchestraCardData } from './agent-orchestra-card-definition.ts'
 import { LEAD_ART, memberArtUrl } from './artwork.ts'
-import css from './AgentTeamsCard.module.css'
+import css from './AgentOrchestraCard.module.css'
 
 /** Window event name the floater listens for to open itself. */
-export const OPEN_PANEL_EVENT = 'agent-teams:open-panel'
+export const OPEN_PANEL_EVENT = 'agent-orchestra:open-panel'
 
 /** Navigation action injected from the plugin's own SessionsService access. */
-export interface AgentTeamsCardInjected {
+export interface AgentOrchestraCardInjected {
   readonly openSession: (id: SessionId) => void
   readonly currentSessionId: () => SessionId | undefined
 }
 
 /** Complete keyed Chat renderer props. */
-export type AgentTeamsCardProps =
-  PropsRuntime<'conversation.chat.node', 'agent-teams'>
+export type AgentOrchestraCardProps =
+  PropsRuntime<'conversation.chat.node', 'agent-orchestra'>
   & PropsLocale<'agentTeams'>
-  & AgentTeamsCardInjected
+  & AgentOrchestraCardInjected
 
 /** Re-activate the top-right activity panel, carrying this team's summary
  * so the panel can show it even when the team no longer exists on disk
  * (historical session review). */
-function openActivityPanel(data: AgentTeamsCardData): void {
+function openActivityPanel(data: AgentOrchestraCardData): void {
   window.dispatchEvent(new CustomEvent(OPEN_PANEL_EVENT, {
     detail: {
       teamId: data.teamId,
@@ -48,14 +48,14 @@ function openActivityPanel(data: AgentTeamsCardData): void {
 }
 
 /** Render one durable team as a compact conversation card. */
-export function AgentTeamsCard({ node, openSession, currentSessionId }: AgentTeamsCardProps) {
-  const data = node.data as AgentTeamsCardData
+export function AgentOrchestraCard({ node, openSession, currentSessionId }: AgentOrchestraCardProps) {
+  const data = node.data as AgentOrchestraCardData
   const owner = data.captainSessionId || currentSessionId() || ''
   const [snapshot, setSnapshot] = useState<ActivityTeam | undefined>()
   useEffect(() => {
     let cancelled = false
     const tick = async (): Promise<void> => {
-      for (const url of ['/plugins/dsh-agent-teams/state', '/plugins/dsh-agent-teams/state?archived=1']) {
+      for (const url of ['/plugins/dsh-agent-orchestra/state', '/plugins/dsh-agent-orchestra/state?archived=1']) {
         try {
           const response = await fetch(url, { cache: 'no-store' })
           if (!response.ok) continue
@@ -79,14 +79,14 @@ export function AgentTeamsCard({ node, openSession, currentSessionId }: AgentTea
       clearInterval(timer)
     }
   }, [data.teamId, owner])
-  const resolved = useMemo<AgentTeamsCardData>(() => ({
+  const resolved = useMemo<AgentOrchestraCardData>(() => ({
     ...data,
     captainSessionId: snapshot?.captainSessionId ?? owner,
     teamName: snapshot?.name ?? data.teamName,
     members: snapshot?.members.map((member) => ({ id: member.id, name: member.name, role: member.role })) ?? data.members,
   }), [data, owner, snapshot])
   return (
-    <section className={css.root} data-agent-teams-card data-team-id={resolved.teamId}>
+    <section className={css.root} data-agent-orchestra-card data-team-id={resolved.teamId}>
       <header className={css.head}>
         <img className={css.leadAvatar} src={LEAD_ART} alt="" aria-hidden />
         <span className={css.teamName} title={resolved.teamName}>{resolved.teamName}</span>

@@ -5,7 +5,7 @@
  * durable team files (the truth source) and enrich with live subagent
  * activity, so the panel always reflects the on-disk state even when a model
  * skipped a tool "ritual" (e.g. not calling update_task on completion).
- * @module dsh-agent-teams/snapshot
+ * @module dsh-agent-orchestra/snapshot
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -96,14 +96,14 @@ export async function assembleTeamSnapshot(
       if (entry.kind === 'child') activity.set(entry.id, entry.activity)
     }
   } catch (error: unknown) {
-    ctx.logger.warn(`agent-teams: activity listing failed for ${state.name}: ${String(error)}`)
+    ctx.logger.warn(`agent-orchestra: activity listing failed for ${state.name}: ${String(error)}`)
   }
   const unreadByMember = new Map<string, number>()
   for (const member of state.members.filter((candidate) => candidate.status !== 'removed')) {
     try {
       unreadByMember.set(member.name, (await readMailbox(stateRoot, state.id, member.name)).length)
     } catch (error: unknown) {
-      ctx.logger.warn(`agent-teams: mailbox read failed for ${member.name}: ${String(error)}`)
+      ctx.logger.warn(`agent-orchestra: mailbox read failed for ${member.name}: ${String(error)}`)
       unreadByMember.set(member.name, 0)
     }
   }
@@ -178,7 +178,7 @@ export async function collectTeamsActivity(
         if (state === undefined) continue
         snapshots.push(await assembleTeamSnapshot(ctx, root.stateRoot, root.workspace, state))
       } catch {
-        ctx.logger.warn(`agent-teams: skipped unreadable team state "${entry.name}" in workspace "${root.workspace}"`)
+        ctx.logger.warn(`agent-orchestra: skipped unreadable team state "${entry.name}" in workspace "${root.workspace}"`)
       }
     }
   }
@@ -205,7 +205,7 @@ export async function collectArchivedTeamsActivity(
         if (state === undefined) continue
         snapshots.push(await assembleTeamSnapshot(ctx, join(root.stateRoot, 'archive'), root.workspace, state))
       } catch {
-        ctx.logger.warn(`agent-teams: skipped unreadable archived team "${teamId}" in workspace "${root.workspace}"`)
+        ctx.logger.warn(`agent-orchestra: skipped unreadable archived team "${teamId}" in workspace "${root.workspace}"`)
       }
     }
   }

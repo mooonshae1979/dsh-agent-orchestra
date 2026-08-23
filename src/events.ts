@@ -10,7 +10,7 @@
  *
  * Types and the `SessionEventMap` merge live in `event-types.ts` (zero
  * imports) so the browser program can load them without host augmentations.
- * @module dsh-agent-teams/events
+ * @module dsh-agent-orchestra/events
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -48,14 +48,14 @@ export function appendTeamEvent(
   if (known?.has(type) !== true) {
     if (!skippedEventTypes.has(type)) {
       skippedEventTypes.add(type)
-      ctx.logger.debug(`agent-teams: session event "${type}" omitted because this harness does not recognize it`)
+      ctx.logger.debug(`agent-orchestra: session event "${type}" omitted because this harness does not recognize it`)
     }
     return
   }
   try {
     session.append(type, data)
   } catch (error: unknown) {
-    ctx.logger.warn(`agent-teams: session record failed after ${type}: ${String(error)}`)
+    ctx.logger.warn(`agent-orchestra: session record failed after ${type}: ${String(error)}`)
   }
 }
 

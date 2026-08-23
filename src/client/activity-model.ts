@@ -1,4 +1,4 @@
-/** Pure relationship projections used by the AgentTeams activity panel. */
+/** Pure relationship projections used by the AgentOrchestra activity panel. */
 
 /** Minimum task shape needed to derive dependency relationships. */
 export interface RelationshipTask {
