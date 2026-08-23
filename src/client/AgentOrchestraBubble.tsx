@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { AgentOrchestraBubbleData } from './agent-orchestra-bubble-definition.ts'
 import { collapseText } from './bubble-pure.ts'
 import { enrichBubble, type EnrichTeam } from './bubble-enrich.ts'
 import css from './AgentOrchestraBubble.module.css'
 
-export interface BubbleProps { data: AgentOrchestraBubbleData; openSession?: (id: string) => void }
+export interface BubbleProps { data: AgentOrchestraBubbleData; openSession?: (id: SessionId) => void }
 
 /** One member's interaction bubble. Defensive: never throws on bad data. */
 export function AgentOrchestraBubble({ data, openSession }: BubbleProps) {
@@ -42,7 +43,7 @@ export function AgentOrchestraBubble({ data, openSession }: BubbleProps) {
     'data-bubble-kind': data?.kind ?? '',
     'data-bubble-from': data?.fromMember ?? '',
     ...(canNavigate
-      ? { onClick: () => openSession(enr.sessionId), 'data-navigable': '', title: ('打开 ' + member + ' 的对话') }
+      ? { onClick: () => openSession(enr.sessionId as SessionId), 'data-navigable': '', title: ('打开 ' + member + ' 的对话') }
       : {}),
   }
   return (
