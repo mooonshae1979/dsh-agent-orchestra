@@ -8,3 +8,5 @@
 .meta { font-size: 11px; color: #64748b; }
 .body { font-size: 13px; color: #334155; white-space: pre-wrap; word-break: break-word; }
 .toggle { align-self: flex-start; background: none; border: none; color: #2563eb; cursor: pointer; font-size: 12px; padding: 0; }
+.root[data-navigable] { cursor: pointer; transition: background 0.12s ease; }
+.root[data-navigable]:hover { background: #f1f5f9; }
