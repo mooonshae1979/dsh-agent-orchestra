@@ -804,15 +804,19 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
     async execute(args, _exec) {
       if (args.workflow_id === 'custom') {
         const parsed = JSON.parse(args.custom ?? '{}') as unknown
+        const shape = parsed as Record<string, unknown>
+        if (typeof parsed !== 'object' || parsed === null || !Array.isArray(shape.steps)) {
+          throw new Error('custom workflow invalid: must be an object with a steps array')
+        }
         const errors = validateWorkflow(parsed as never)
         if (errors.length > 0) throw new Error('custom workflow invalid: ' + errors.join('; '))
-        return { workflow_id: (parsed as any).id, name: (parsed as any).name, steps: (parsed as any).steps, errors }
+        return { workflow_id: String(shape.id ?? ''), name: String(shape.name ?? ''), steps: shape.steps as never, errors }
       }
       const workflow = getWorkflow(args.workflow_id)
       if (workflow === undefined) {
         throw new Error('unknown workflow "' + args.workflow_id + '" — available: ' + DEFAULT_WORKFLOWS.map((w) => w.id).join(', '))
       }
-      return { workflow_id: workflow.id, name: workflow.name, steps: workflow.steps, errors: validateWorkflow(workflow) }
+      return { workflow_id: workflow.id, name: workflow.name, steps: workflow.steps as never, errors: validateWorkflow(workflow) }
     },
   }))
 
@@ -825,7 +829,7 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
     },
     output: {
       schema: { type: 'object', additionalProperties: true, properties: {} },
-      render: (_args, value) => [{ type: 'text', text: 'Assembled ' + value.members + ' members for workflow "' + value.workflow_id + '"' }],
+      render: (_args, value) => [{ type: 'text', text: 'Assembled ' + value.member_count + ' members for workflow "' + value.workflow_id + '"' }],
     },
     async execute(args, exec) {
       const captain = requireCaptain(exec)
@@ -833,28 +837,38 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
       const stateRoot = stateRootOf(workspace, config)
       const team = await requireCaptainTeam(workspace, config, captain)
       const workflow = getWorkflow(args.workflow_id)
-      if (workflow === undefined) throw new Error('unknown workflow "' + args.workflow_id + '"')
+      if (workflow === undefined) throw new Error('unknown workflow "' + args.workflow_id + '" — available: ' + DEFAULT_WORKFLOWS.map((w) => w.id).join(', '))
       const overrides = JSON.parse(args.overrides ?? '{}') as Record<string, unknown>
       const fresh = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
         const f = await requireFreshCaptainTeam(stateRoot, team.id, captain.id)
         const members = assembleMembers(workflow, overrides as never)
+        const activeCount = f.members.filter((c) => c.status !== 'removed').length
+        if (activeCount + members.length > config.maxMembers) {
+          throw new Error(`team "${f.name}" would exceed member cap (${config.maxMembers}): ${activeCount} active + ${members.length} to add`)
+        }
         for (const member of members) {
-          if (f.members.some((c) => c.name === member.name)) continue
+          if (f.members.some((c) => sanitizeKey(c.name) === sanitizeKey(member.name))) continue
           await spawnMember(ctx, memberRuntime(config), captain, f, member, config.stateDir, exec.signal)
           f.members.push(member)
+          appendTeamEvent(ctx, captainSessionOf(ctx, f.captainSessionId, captain.session), 'agent-orchestra/member-added', {
+            teamId: f.id,
+            memberId: member.id,
+            name: member.name,
+            ...(member.role !== undefined ? { role: member.role } : {}),
+          })
         }
         f.workflowId = workflow.id
         f.stepIndex = 0
         await writeTeam(stateRoot, f)
         return f
       })
-      return { workflow_id: workflow.id, members: fresh.members.length, step_index: fresh.stepIndex ?? 0 }
+      return { workflow_id: workflow.id, member_count: fresh.members.length, step_index: fresh.stepIndex ?? 0 }
     },
   }))
 
   ctx.tools.register(defineTool({
     name: 'orchestra_relay',
-    description: 'Advance a workflow: mark a step done and decide the next step by the next-pointer. Returns the next step/assignee for the captain to dispatch (or done=true).',
+    description: 'Compute the next workflow step after a completed step (no state write). Returns the next step/assignee for the captain to dispatch, or done=true. Persisting progress and dispatch are handled in the dispatch flow.',
     parameters: {
       completed_step_id: { type: 'string', required: true, description: 'The step id that just completed.' },
     },
@@ -870,6 +884,9 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
       if (team.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
       const workflow = getWorkflow(team.workflowId)
       if (workflow === undefined) throw new Error('workflow "' + team.workflowId + '" not found')
+      if (!workflow.steps.some((s) => s.stepId === args.completed_step_id)) {
+        throw new Error('unknown step "' + args.completed_step_id + '" — available: ' + workflow.steps.map((s) => s.stepId).join(', '))
+      }
       const decision = decideNext(workflow, args.completed_step_id)
       return {
         workflow_id: workflow.id,

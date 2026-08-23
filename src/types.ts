@@ -104,7 +104,7 @@ export interface TeamState {
   tasks: TeamTask[]
   /** Active workflow id when the team is assembled from a workflow. */
   workflowId?: string
-  /** Index of the workflow step currently in flight (relay advances it). */
+  /** Reserved: index of the active workflow step (advance/persist is handled in the dispatch flow). */
   stepIndex?: number
   /** Monotonic task id counter. */
   taskSeq: number
