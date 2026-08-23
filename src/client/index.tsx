@@ -50,7 +50,13 @@ export function apply(ctx: ClientContext): void {
 
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
-    key: 'agent-orchestra-bubble',
+    key: 'member-message',
+  }, (props: { node: { data: AgentOrchestraBubbleData } }) => (
+    <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} /></BubbleErrorBoundary>
+  )))
+  ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
+    name: 'conversation.chat.node',
+    key: 'task-done',
   }, (props: { node: { data: AgentOrchestraBubbleData } }) => (
     <BubbleErrorBoundary><AgentOrchestraBubble data={props.node.data} /></BubbleErrorBoundary>
   )))
