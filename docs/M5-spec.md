@@ -48,3 +48,9 @@ DSH 的 `SubagentContinuationManager.notifySettlement` 在成员 settle 时，�
 ## 提交
 分支 `feat/member-in-conversation`，只加相关 client 文件。
 验证：宿主编译 pre 0 + client 语法 + 既有单测。
+
+## 补充：enrichBubble 支持按 fromId 反查（m5 必需）
+`subagent-settled` 只给 senderSessionId（fromId），无名。`enrichBubble` 现只按 `data.fromMember` 名字匹配。
+**增强** `src/client/bubble-enrich.ts` 的 `enrichBubble`：
+- 当按 `fromMember` 名字在 teams.members 里找不到时，若 `data.fromId` 非空，改用 `member.id === data.fromId` 匹配，命中则返回该 member 的 `name/role/id`（`BubbleEnrichment` 加 `name?: string` 字段）。
+- 这样 `member-settled` 气泡（data.fromId=childId，fromMember 可空）渲染时能拿到成员名。
