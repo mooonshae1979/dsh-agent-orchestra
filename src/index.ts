@@ -96,6 +96,8 @@ Member dispatch preference (model + mode):
 - Explicitly pass the model as \`provider/model\` (e.g. \`trae-solo/DeepSeek-V4-Flash-Official\`) so the provider is pinned too; do not leave it to inherit the captain's provider accidentally.
 - Non-DeepSeek members (e.g. vision tasks using Doubao): may use \`mode: minimal\` for a focused single-coding member, or the shape mapping (generative→minimal, batch→PTC, exploratory→standard).
 
+Complex goals: use orchestra_define_workflow to pick a template, orchestra_assemble to form the team, orchestra_relay to advance steps, orchestra_dispatch_step to dispatch a step to a member.
+
 Tools: ${toolNames}`
 }
 
@@ -124,6 +126,10 @@ export function apply(ctx: Context, config: Config): void {
     'orchestra_send_message',
     'orchestra_status',
     'orchestra_delete',
+    'orchestra_define_workflow',
+    'orchestra_assemble',
+    'orchestra_relay',
+    'orchestra_dispatch_step',
   ].join(', ')
   ctx.systemPrompt.section({
     name: 'agent-orchestra:usage',
