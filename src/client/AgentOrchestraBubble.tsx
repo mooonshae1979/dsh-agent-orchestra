@@ -32,7 +32,8 @@ export function AgentOrchestraBubble({ data, openSession }: BubbleProps) {
   const text = (data?.text ?? '').trim()
   const { excerpt, truncated } = collapseText(text)
   const body = (truncated && !expanded) ? excerpt : (text || '（无正文）')
-  const time = data?.ts ? new Date(data.ts).toLocaleTimeString() : ''
+  const safeTs = data?.ts !== undefined && data?.ts !== null && Number.isFinite(data.ts) ? data.ts : 0
+  const time = safeTs ? new Date(safeTs).toLocaleTimeString() : ''
   const subject = data?.kind === 'task-done' ? (enr.taskSubject || data.taskSubject || '') : ''
   const meta = data?.kind === 'member-message'
     ? ('→ ' + (data.toMember || 'captain'))
