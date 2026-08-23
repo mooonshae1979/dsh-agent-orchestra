@@ -47,4 +47,15 @@ t('captain but no captainSessionId → empty sessionId', () => {
   assert.equal(r.sessionId, '')
 })
 
+t('match member by fromId when fromMember empty', () => {
+  const r = enrichBubble({ kind: 'member-message', fromMember: '', fromRole: '', fromId: 'sess-2', text: 'hi', ts: 1 }, teams)
+  assert.equal(r.name, 'bob')
+  assert.equal(r.role, 'engineer')
+  assert.equal(r.sessionId, 'sess-2')
+})
+t('fromId no match keeps fields empty', () => {
+  const r = enrichBubble({ kind: 'member-message', fromMember: '', fromRole: '', fromId: 'nope', text: 'hi', ts: 1 }, teams)
+  assert.deepStrictEqual(r, { role: '', sessionId: '', taskSubject: '' })
+})
+
 console.log('\nbubble-enrich: ' + passed + ' passed')

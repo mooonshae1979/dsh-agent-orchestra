@@ -5,7 +5,7 @@ import type {
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { AgentOrchestraBubbleData } from './bubble-pure.ts'
 export type { AgentOrchestraBubbleData }
-import { parseSendMessageBubble, parseUpdateTaskBubble, collapseText, BUBBLE_EXCERPT_LEN } from './bubble-pure.ts'
+import { parseSendMessageBubble, parseUpdateTaskBubble, parseSubagentSettledBubble, collapseText, BUBBLE_EXCERPT_LEN } from './bubble-pure.ts'
 // Module-loading imports: the declaration merges below extend modules that
 // must be present in the program — a type-only import both loads them and is
 // erased from the bundle.
@@ -18,12 +18,14 @@ declare module '@deepseek-ai/dsh-client-ui-conversation/client' {
     'member-message': AgentOrchestraBubbleData
     /** One completed-task bubble in the conversation. */
     'task-done': AgentOrchestraBubbleData
+    /** One member direct-reply (subagent-settled) notice in the conversation. */
+    'member-settled': AgentOrchestraBubbleData
   }
 }
 
 /** Mutable business state folded out of the durable tool events. */
 export interface MutableBubbleState {
-  readonly kind: 'member-message' | 'task-done'
+  readonly kind: 'member-message' | 'task-done' | 'member-settled'
   readonly fromMember: string
   readonly fromRole: string
   readonly fromId: string
@@ -36,7 +38,7 @@ export interface MutableBubbleState {
 }
 
 /** Safety-returned empty state when a start cannot rebuild bubble data. */
-function emptyState(kind: 'member-message' | 'task-done'): MutableBubbleState {
+function emptyState(kind: 'member-message' | 'task-done' | 'member-settled'): MutableBubbleState {
   return {
     kind,
     fromMember: '未知成员',
@@ -182,6 +184,72 @@ export const taskDoneDefinition: ConversationNodeDefinition<MutableBubbleState> 
         fromId: '',
         taskId: s.taskId,
         taskSubject: s.taskSubject,
+        text: s.text,
+        ts: s.ts,
+      },
+    }
+  },
+}
+
+/**
+ * Fold each DSH `user/message` `subagent-settled` event (member direct
+ * reply after being woken by the captain, without calling
+ * orchestra_send_message) into one member-settled bubble anchored at the
+ * event. One-shot notice: no update/result pairing; accept holds directly.
+ * @module dsh-agent-orchestra/client/bubble
+ */
+export const memberSettledDefinition: ConversationNodeDefinition<MutableBubbleState> = {
+  kind: 'member-settled',
+  target: 'chat',
+  match: (event) => {
+    if (event.type !== 'user/message') return null
+    const source = event.data?.message?.source
+    if (source?.kind !== 'subagent-settled') return null
+    const sender = String(source.senderSessionId ?? '')
+    if (sender === '') return null
+    const id = 'member-settled:' + sender + ':' + (event.seq !== undefined ? String(event.seq) : sender)
+    return { id, role: 'start' }
+  },
+  start: (_context, match): MutableBubbleState => {
+    if (match.event.type !== 'user/message') return emptyState('member-settled')
+    try {
+      const b = parseSubagentSettledBubble(match.event.data?.message)
+      if (b === undefined) return emptyState('member-settled')
+      return {
+        kind: 'member-settled',
+        fromMember: '',
+        fromRole: '',
+        fromId: b.fromId,
+        toMember: undefined,
+        taskId: undefined,
+        taskSubject: undefined,
+        text: b.text,
+        ts: b.ts,
+        accepted: true,
+      }
+    } catch {
+      return emptyState('member-settled')
+    }
+  },
+  buildViewNode: (context): ChatConversationViewNode | null => {
+    if (context.start === undefined) return null
+    const s = context.state
+    if (s === undefined) return null
+    if (!s.accepted || s.kind !== 'member-settled') return null
+    if (s.fromId === '' || s.text === '') return null
+    return {
+      key: context.key,
+      kind: 'member-settled',
+      id: context.id,
+      target: 'chat',
+      anchorSeq: context.start.event.seq,
+      location: context.start.location,
+      visibility: 'visible',
+      data: {
+        kind: 'member-message',
+        fromMember: s.fromMember,
+        fromRole: '',
+        fromId: s.fromId,
         text: s.text,
         ts: s.ts,
       },

@@ -62,3 +62,44 @@ export function collapseText(text: string, max = BUBBLE_EXCERPT_LEN): { excerpt:
   if (text.length <= max) return { excerpt: text, truncated: false }
   return { excerpt: text.slice(0, max) + '…', truncated: true }
 }
+
+/**
+ * Parse a DSH `user/message` event whose source is a settled subagent
+ * (member direct reply) → bubble payload (pure).
+ * Defensive: never throws on malformed input.
+ */
+export function parseSubagentSettledBubble(
+  message: unknown,
+  ts = Date.now(),
+): { fromId: string; text: string } | undefined {
+  if (typeof message !== 'object' || message === null) return undefined
+  const m = message as Record<string, unknown>
+  const source = (typeof m.source === 'object' && m.source !== null)
+    ? (m.source as Record<string, unknown>)
+    : null
+  if (!source || source.kind !== 'subagent-settled') return undefined
+  const fromId = str(source.senderSessionId)
+  if (fromId === '') return undefined
+  const summary = str(source.summary).trim()
+  const content = m.content
+  const blocks: unknown[] = Array.isArray(content) ? content : []
+  let afterClosing = false
+  let foundClosing = false
+  const parts: string[] = []
+  for (const block of blocks) {
+    if (typeof block !== 'object' || block === null) continue
+    const b = block as Record<string, unknown>
+    if (b.type !== 'text') continue
+    const t = str(b.text)
+    if (!foundClosing && t === 'Its closing message:') {
+      foundClosing = true
+      afterClosing = true
+      continue
+    }
+    if (afterClosing) parts.push(t)
+  }
+  let text = parts.join('\n').trim()
+  if (text === '') text = summary
+  if (text === '') return undefined
+  return { fromId, text }
+}

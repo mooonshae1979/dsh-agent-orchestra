@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { parseSendMessageBubble, parseUpdateTaskBubble, collapseText } from './.bubble-pure.mjs'
+import { parseSendMessageBubble, parseUpdateTaskBubble, parseSubagentSettledBubble, collapseText } from './.bubble-pure.mjs'
 
 let passed = 0
 function t(name, fn) { try { fn(); passed++; console.log('  PASS ' + name) } catch (e) { console.error('  FAIL ' + name + ': ' + e.message); process.exitCode = 1 } }
@@ -47,7 +47,34 @@ t('parse update_task invalid args returns undefined', () => {
 t('collapseText tolerates empty string', () => {
   assert.deepStrictEqual(collapseText(''), { excerpt: '', truncated: false })
 })
-
-
+t('parse subagent-settled with closing message', () => {
+  const b = parseSubagentSettledBubble({
+    source: { kind: 'subagent-settled', senderSessionId: 'child-1', summary: 'summary text' },
+    content: [
+      { type: 'text', text: 'summary text' },
+      { type: 'text', text: 'Its closing message:' },
+      { type: 'text', text: 'direct reply one' },
+      { type: 'text', text: 'direct reply two' },
+    ],
+  })
+  assert.equal(b?.fromId, 'child-1')
+  assert.equal(b?.text, 'direct reply one\ndirect reply two')
+})
+t('parse subagent-settled no closing falls back to summary', () => {
+  const b = parseSubagentSettledBubble({
+    source: { kind: 'subagent-settled', senderSessionId: 'child-2', summary: 'the summary' },
+    content: [
+      { type: 'text', text: 'the summary' },
+      { type: 'text', text: 'It left no closing message.' },
+    ],
+  })
+  assert.equal(b?.fromId, 'child-2')
+  assert.equal(b?.text, 'the summary')
+})
+t('parse subagent-settled malformed returns undefined', () => {
+  assert.equal(parseSubagentSettledBubble(null), undefined)
+  assert.equal(parseSubagentSettledBubble({ source: { kind: 'other' } }), undefined)
+  assert.equal(parseSubagentSettledBubble({ source: { kind: 'subagent-settled', senderSessionId: '' }, content: [] }), undefined)
+})
 
 console.log('\nbubble: ' + passed + ' passed')

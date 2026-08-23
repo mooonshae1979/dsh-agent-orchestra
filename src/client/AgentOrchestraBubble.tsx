@@ -22,7 +22,7 @@ export function AgentOrchestraBubble({ data, openSession }: BubbleProps) {
     return () => { cancelled = true }
   }, [])
   const enr = enrichBubble(data, teams)
-  const member = data?.fromMember ? data.fromMember : '未知成员'
+  const member = data?.fromMember || enr.name || '未知成员'
   const roleText = (data?.fromRole || enr.role) ? (' · ' + (data.fromRole || enr.role)) : ''
   const text = (data?.text ?? '').trim()
   const { excerpt, truncated } = collapseText(text)

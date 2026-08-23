@@ -5,6 +5,8 @@ export function enrichBubble(data, teams) {
     if (data === undefined || !Array.isArray(teams))
         return empty;
     const from = data.fromMember ?? '';
+    const fromId = data.fromId ?? '';
+    let name = '';
     let role = '';
     let sessionId = '';
     let subject = '';
@@ -12,12 +14,18 @@ export function enrichBubble(data, teams) {
         if (!team || !Array.isArray(team.members))
             continue;
         for (const member of team.members) {
-            if (member && member.name === from) {
-                if (role === '' && member.role)
-                    role = member.role;
-                if (sessionId === '' && member.id)
-                    sessionId = member.id;
-            }
+            if (!member)
+                continue;
+            const nameMatch = member.name === from;
+            const idMatch = fromId !== '' && member.id === fromId;
+            if (!nameMatch && !idMatch)
+                continue;
+            if (name === '' && member.name)
+                name = member.name;
+            if (role === '' && member.role)
+                role = member.role;
+            if (sessionId === '' && member.id)
+                sessionId = member.id;
         }
     }
     // Captain is not in members[]; allow task-done (from captain) to navigate.
@@ -43,5 +51,10 @@ export function enrichBubble(data, teams) {
                 break;
         }
     }
-    return { role, sessionId, taskSubject: subject };
+    return {
+        ...(name !== '' ? { name } : {}),
+        role,
+        sessionId,
+        taskSubject: subject,
+    };
 }
