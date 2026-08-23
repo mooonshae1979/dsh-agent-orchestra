@@ -25,6 +25,7 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type { WorkspaceRegistry } from '@deepseek-ai/dsh-workspace'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { registerAgentOrchestraTools, type ToolsConfig } from './tools.ts'
+import { captureMemberDirectReply } from './members.ts'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -138,6 +139,21 @@ export function apply(ctx: Context, config: Config): void {
   })
 
   registerAgentOrchestraTools(ctx, resolved)
+
+  // Capture member direct replies (bare closing messages when a member settles
+  // without calling orchestra_send_message) into the captain's inbox, so every
+  // member reply appears in the M4/M6 conversation surface. The `session/event`
+  // firehose may be unavailable in headless profiles — guard the registration
+  // so a missing service never blocks plugin boot.
+  try {
+    ctx.on('session/event', ((session: unknown, event: unknown) => {
+      void captureMemberDirectReply(ctx, resolved, event).catch((error: unknown) => {
+        ctx.logger.warn(`agent-orchestra: capture member reply failed: ${String(error)}`)
+      })
+    }) as never)
+  } catch (error: unknown) {
+    ctx.logger.warn(`agent-orchestra: session/event listener unavailable: ${String(error)}`)
+  }
 
   // The activity panel data/artwork routes need the Web server and the
   // workspace registry, which headless profiles do not mount; under
