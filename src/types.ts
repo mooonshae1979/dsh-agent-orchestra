@@ -63,10 +63,16 @@ export interface TeamMember {
   name: string
   /** Role description, e.g. `researcher`, `engineer`, `reviewer`. */
   role?: string
+  /** Optional RoleDef id this member instantiated (for persona fallback). */
+  roleId?: string
+  /** Optional subagent provider override (e.g. `spawn`/`fork`). */
+  provider?: string
   /** Optional model override for this member. */
   model?: string
   /** Tool-set mode; defaults to `standard` when absent. */
   mode?: MemberMode
+  /** Optional pre-synthesized persona (wins over roleId-template synthesis). */
+  persona?: string
   joinedAt: number
   status: MemberStatus
 }
@@ -96,6 +102,40 @@ export interface TeamState {
   /** Teammates only; the captain is implicit (the owning session). */
   members: TeamMember[]
   tasks: TeamTask[]
+  /** Active workflow id when the team is assembled from a workflow. */
+  workflowId?: string
+  /** Index of the workflow step currently in flight (relay advances it). */
+  stepIndex?: number
   /** Monotonic task id counter. */
   taskSeq: number
+}
+
+
+/** One step in a workflow: what to produce and who does it next. */
+export interface StepDef {
+  stepId: string
+  goal: string
+  outputType: 'text' | 'artifact' | 'any'
+  next?: string
+  membersDirect?: boolean
+  assigneeHint?: string
+  subflow?: WorkflowDef
+}
+
+/** A workflow template: an ordered list of steps producing a goal. */
+export interface WorkflowDef {
+  id: string
+  name: string
+  steps: StepDef[]
+}
+
+/** A Role template in the (semi-prebuilt) identity library. */
+export interface RoleDef {
+  id: string
+  displayName: string
+  persona: string
+  defaultProvider?: string
+  defaultModel?: string
+  defaultMode?: MemberMode
+  tools?: string[]
 }
