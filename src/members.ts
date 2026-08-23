@@ -5,11 +5,11 @@
  * Members are durable continuable subagents of the captain, so a member keeps
  * its conversation across turns and across harness restarts: the captain
  * wakes it with {@link ctx.subagents.followup}, it works through its turn
- * (updating team state through the `agent_teams_*` tools), and becomes idle
+ * (updating team state through the `orchestra_*` tools), and becomes idle
  * again. Its final assistant message is not readable programmatically, so the
  * member persists its report into the captain's mailbox and the task records,
- * which the captain reads through `agent_teams_status`.
- * @module dsh-agent-teams/members
+ * which the captain reads through `orchestra_status`.
+ * @module dsh-agent-orchestra/members
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -19,13 +19,13 @@ import type {} from '@deepseek-ai/dsh-subagent'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { TeamMember, TeamState } from './types.ts'
 
-/** Captain-only AgentTeams tools hidden from newly spawned members. */
+/** Captain-only AgentOrchestra tools hidden from newly spawned members. */
 const MEMBER_DENIED_TOOLS = [
-  'agent_teams_create',
-  'agent_teams_add_member',
-  'agent_teams_remove_member',
-  'agent_teams_create_task',
-  'agent_teams_delete',
+  'orchestra_create',
+  'orchestra_add_member',
+  'orchestra_remove_member',
+  'orchestra_create_task',
+  'orchestra_delete',
 ] as const
 
 /**
@@ -42,10 +42,10 @@ const MEMBER_DENIED_TOOLS = [
 const MINIMAL_MEMBER_TOOLS = [
   'pwsh',
   'str_replace_editor',
-  'agent_teams_claim_task',
-  'agent_teams_update_task',
-  'agent_teams_send_message',
-  'agent_teams_status',
+  'orchestra_claim_task',
+  'orchestra_update_task',
+  'orchestra_send_message',
+  'orchestra_status',
 ] as const
 
 /**
@@ -101,20 +101,20 @@ export function parseMemberModelOverride(
  *   team files with its own file tools.
  */
 export function memberPersona(team: TeamState, member: TeamMember, stateDir: string): string {
-  return `You are ${member.name}, a member of the multi-agent team "${team.name}" running inside DeepSeek Harness AgentTeams. The captain leads the team; you are a worker member${member.role ? ` with the role: ${member.role}` : ''}.
+  return `You are ${member.name}, a member of the multi-agent team "${team.name}" running inside DeepSeek Harness AgentOrchestra. The captain leads the team; you are a worker member${member.role ? ` with the role: ${member.role}` : ''}.
 
 Team context:
 - Team id: ${team.id}
 - Your name inside the team (use it as \`from\`/identity): ${member.name}
-- The team state lives under ${stateDir}/${team.id}/ (team.json and inbox/*.jsonl). You may inspect these files read-only for diagnostics, but never edit them directly; use the agent_teams_* tools so JSON escaping and concurrent updates stay safe.
+- The team state lives under ${stateDir}/${team.id}/ (team.json and inbox/*.jsonl). You may inspect these files read-only for diagnostics, but never edit them directly; use the orchestra_* tools so JSON escaping and concurrent updates stay safe.
 - The captain and your teammates reach you through messages. Each message you receive is a new turn: act on it and end your turn with a concise reply.
 
 Working rules:
-1. When the captain assigns you a task, call agent_teams_claim_task with the task id to claim it, then agent_teams_update_task (status=in_progress) once you start working.
+1. When the captain assigns you a task, call orchestra_claim_task with the task id to claim it, then orchestra_update_task (status=in_progress) once you start working.
 2. Work thoroughly with your available tools; do not cut corners.
-3. When finished, call agent_teams_update_task with status=completed and a concise \`output\` summarizing what you did and the key results.
-4. Send a short report to the captain with agent_teams_send_message (to=captain) when you complete a task or hit a blocker.
-5. To ask a teammate something, use agent_teams_send_message with to=<teammate name>; the message lands in their mailbox and wakes them directly — teammates talk to each other without the captain in the loop. The same applies to the captain (to=captain).
+3. When finished, call orchestra_update_task with status=completed and a concise \`output\` summarizing what you did and the key results.
+4. Send a short report to the captain with orchestra_send_message (to=captain) when you complete a task or hit a blocker.
+5. To ask a teammate something, use orchestra_send_message with to=<teammate name>; the message lands in their mailbox and wakes them directly — teammates talk to each other without the captain in the loop. The same applies to the captain (to=captain).
 6. You are a worker: do not create or delete teams, and do not add or remove members — that is the captain's job.`
 }
 
@@ -152,22 +152,22 @@ export async function spawnMember(
   const provider = ctx.subagents.getProvider(config.provider)
   if (provider === undefined) {
     throw new Error(
-      `agent-teams: no subagent provider "${config.provider}" is registered (available: ${ctx.subagents.list().join(', ') || 'none'}) — `
+      `agent-orchestra: no subagent provider "${config.provider}" is registered (available: ${ctx.subagents.list().join(', ') || 'none'}) — `
       + 'check that the subagent provider row (e.g. subagent-spawn) is mounted in the composition',
     )
   }
   if (provider.prepareContinuable === undefined) {
-    throw new Error(`agent-teams: provider "${config.provider}" does not support continuable members`)
+    throw new Error(`agent-orchestra: provider "${config.provider}" does not support continuable members`)
   }
   if (!provider.capabilities.persona) {
-    throw new Error(`agent-teams: provider "${config.provider}" cannot apply a member persona`)
+    throw new Error(`agent-orchestra: provider "${config.provider}" cannot apply a member persona`)
   }
   if (!provider.capabilities.toolFilter) {
-    throw new Error(`agent-teams: provider "${config.provider}" cannot restrict captain-only tools for members`)
+    throw new Error(`agent-orchestra: provider "${config.provider}" cannot restrict captain-only tools for members`)
   }
   const start = await ctx.subagents.startContinuable({
     provider: config.provider,
-    label: `agent-teams:${team.id}:${member.name}`,
+    label: `agent-orchestra:${team.id}:${member.name}`,
     request: {
       prompt: [{ type: 'text', text: memberWelcome(team) }],
       parent: captain,
@@ -177,7 +177,7 @@ export async function spawnMember(
         : { deny: [...MEMBER_DENIED_TOOLS] },
       ...(() => {
         // Per-member model override wins; fall back to the global memberModel.
-        // `member.model` comes from agent_teams_add_member's `model` argument
+        // `member.model` comes from orchestra_add_member's `model` argument
         // and may be written as `provider/model` so the provider is pinned too.
         const override = parseMemberModelOverride(member.model ?? config.model)
         return override.model !== undefined ? { agentOptions: override } : {}
@@ -215,12 +215,12 @@ export async function deliverToMember(
 ): Promise<boolean> {
   try {
     await ctx.subagents.followup(captain, brandedSessionId(childId), [{ type: 'text', text }], {
-      source: { kind: 'plugin', plugin: 'dsh-agent-teams' },
+      source: { kind: 'plugin', plugin: 'dsh-agent-orchestra' },
       signal,
     })
     return true
   } catch (error: unknown) {
-    ctx.logger.warn(`agent-teams: followup to member ${childId} failed: ${String(error)}`)
+    ctx.logger.warn(`agent-orchestra: followup to member ${childId} failed: ${String(error)}`)
     return false
   }
 }
@@ -236,7 +236,7 @@ export function interruptMember(ctx: Context, captain: Agent, childId: string): 
   try {
     ctx.subagents.interrupt(brandedSessionId(childId), { kind: 'ancestor', agent: captain })
   } catch (error: unknown) {
-    ctx.logger.warn(`agent-teams: interrupt of member ${childId} failed: ${String(error)}`)
+    ctx.logger.warn(`agent-orchestra: interrupt of member ${childId} failed: ${String(error)}`)
   }
 }
 
