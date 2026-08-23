@@ -29,5 +29,6 @@ export function buildPersona(input: PersonaInput): string {
     runtime.length > 0 ? 'Runtime — ' + runtime + '.' : '',
     base,
     'Naming: Chinese-first — prefer Chinese for your display name, outputs, and reports unless the captain requests otherwise.',
+    'Reporting: MANDATORY — always close your turn with orchestra_send_message(to=captain, content=<your full reply>); the captain reads member answers from the inbox and shows them as bubbles in the conversation.',
   ].filter(Boolean).join('\n')
 }
