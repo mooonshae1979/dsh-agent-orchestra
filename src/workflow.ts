@@ -16,13 +16,19 @@ export function validateWorkflow(workflow: WorkflowDef): string[] {
   if (!Array.isArray(workflow.steps)) {
     return ['workflow must have a steps array']
   }
-  const ids = new Set(workflow.steps.map((step) => step.stepId))
+  const ids = new Set<string>()
+  for (const step of workflow.steps) {
+    if (step === undefined || typeof step !== 'object' || typeof step.stepId !== 'string' || step.stepId.length === 0) {
+      errors.push('a step is missing a non-empty stepId')
+      continue
+    }
+    ids.add(step.stepId)
+  }
   if (ids.size !== workflow.steps.length) {
     errors.push(`workflow "${String(workflow.id ?? '')}" has duplicate step ids`)
   }
   for (const step of workflow.steps) {
     if (step === undefined || typeof step !== 'object' || typeof step.stepId !== 'string' || step.stepId.length === 0) {
-      errors.push('a step is missing a non-empty stepId')
       continue
     }
     if (typeof step.goal !== 'string' || step.goal.length === 0) {
@@ -47,6 +53,8 @@ export const DEFAULT_ROLES: RoleDef[] = [
   { id: 'engineer', displayName: 'engineer', persona: 'You are a pragmatic software engineer. Implement clean, tested code following the task spec. Report what you changed and why.' },
   { id: 'reviewer', displayName: 'reviewer', persona: 'You are a rigorous reviewer. Review the produced artifact for correctness, quality and completeness. Provide actionable feedback or an approval.' },
   { id: 'planner', displayName: 'planner', persona: 'You are an architect/planner. Turn the goal into a concrete execution plan with clear steps, boundaries and acceptance criteria.' },
+  // Novel tools are declarative suggestions (the member persona references them);
+  // applying them as a spawn toolFilter is wired in a later milestone.
   { id: 'novelist', displayName: 'novelist', persona: 'You are an AI novelist. Write engaging, coherent prose. Use the novel tools (novel_read / novel_apply_change) when available. Produce polished creative text.', tools: ['novel_read', 'novel_apply_change'] },
 ]
 

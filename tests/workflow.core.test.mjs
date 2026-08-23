@@ -62,5 +62,8 @@ t('validateWorkflow rejects invalid outputType', () => {
 t('novelist role has novel tools whitelist', () => {
   assert.deepStrictEqual(getRole('novelist').tools, ['novel_read', 'novel_apply_change'])
 })
+t('validateWorkflow does not throw on malformed step entries', () => {
+  assert.deepStrictEqual(validateWorkflow({ id: 'x', name: 'x', steps: [undefined] }).length > 0, true)
+})
 
 console.log('\nworkflow: ' + passed + ' passed')

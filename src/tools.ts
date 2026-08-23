@@ -841,7 +841,7 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
       const overrides = JSON.parse(args.overrides ?? '{}') as Record<string, unknown>
       const fresh = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
         const f = await requireFreshCaptainTeam(stateRoot, team.id, captain.id)
-        const members = assembleMembers(workflow, overrides as never)
+        const members = assembleMembers(workflow, overrides as never, fresh.name)
         const activeCount = f.members.filter((c) => c.status !== 'removed').length
         if (activeCount + members.length > config.maxMembers) {
           throw new Error(`team "${f.name}" would exceed member cap (${config.maxMembers}): ${activeCount} active + ${members.length} to add`)
@@ -916,17 +916,20 @@ export function registerAgentOrchestraTools(ctx: Context, config: ToolsConfig): 
       const workspace = workspaceOf(captain)
       const stateRoot = stateRootOf(workspace, config)
       const team = await requireCaptainTeam(workspace, config, captain)
-      if (team.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
-      const workflow = getWorkflow(team.workflowId)
-      if (workflow === undefined) throw new Error('workflow "' + team.workflowId + '" not found')
-      const step = workflow.steps.find((s) => s.stepId === args.step_id)
-      if (step === undefined) throw new Error('unknown step "' + args.step_id + '" — available: ' + workflow.steps.map((s) => s.stepId).join(', '))
-      const member = team.members.find((m) => m.status !== 'removed' && (m.name === args.member_name || m.roleId === args.member_name))
-      if (member === undefined) throw new Error('no member named/role "' + args.member_name + '" in team')
-      if (member.id === '') throw new Error('member "' + member.name + '" is not spawned yet')
-      const text = 'Step "' + step.stepId + '": ' + step.goal + (args.context ? '\n\n' + args.context : '')
-      const delivered = await deliverToMember(ctx, captain, member.id, text, exec.signal)
-      return { step_id: step.stepId, member_name: member.name, delivered: delivered ? ('wake' as const) : ('mailbox' as const) }
+      return withTeamLock(teamLockKey(stateRoot, team.id), async () => {
+        const fresh = await requireFreshCaptainTeam(stateRoot, team.id, captain.id)
+        if (fresh.workflowId === undefined) throw new Error('team has no active workflow — call orchestra_assemble first')
+        const workflow = getWorkflow(fresh.workflowId)
+        if (workflow === undefined) throw new Error('workflow "' + fresh.workflowId + '" not found')
+        const step = workflow.steps.find((s) => s.stepId === args.step_id)
+        if (step === undefined) throw new Error('unknown step "' + args.step_id + '" — available: ' + workflow.steps.map((s) => s.stepId).join(', '))
+        const member = fresh.members.find((m) => m.status !== 'removed' && (m.name === args.member_name || m.roleId === args.member_name))
+        if (member === undefined) throw new Error('no member named/role "' + args.member_name + '" in team')
+        if (member.id === '') throw new Error('member "' + member.name + '" is not spawned yet')
+        const text = 'Step "' + step.stepId + '": ' + step.goal + (args.context ? '\n\n' + args.context : '')
+        const delivered = await deliverToMember(ctx, captain, member.id, text, exec.signal)
+        return { step_id: step.stepId, member_name: member.name, delivered: delivered ? ('wake' as const) : ('mailbox' as const) }
+      })
     },
   }))
 }
