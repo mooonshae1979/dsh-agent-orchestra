@@ -55,7 +55,9 @@ function emptyState(kind: 'member-message' | 'task-done'): MutableBubbleState {
 function resultFailed(event: ConversationMatch['event']): boolean {
   if (event.type !== 'tool/result') return true
   if (event.data.error !== undefined) return true
-  return event.data.message.content.some((block) => block.type === 'tool-result' && block.isError === true)
+  const content = event.data.message?.content
+  return !Array.isArray(content)
+    || content.some((block) => block.type === 'tool-result' && block.isError === true)
 }
 
 /**
@@ -76,7 +78,7 @@ export const memberMessageDefinition: ConversationNodeDefinition<MutableBubbleSt
       }
       return { id: String(event.data.callId), role: 'start' }
     }
-    if (event.type === 'tool/result' && event.data.message.source.kind === 'tool') {
+    if (event.type === 'tool/result' && event.data.message?.source?.kind === 'tool') {
       return { id: String(event.data.message.source.callId), role: 'update' }
     }
     return null
@@ -139,7 +141,7 @@ export const taskDoneDefinition: ConversationNodeDefinition<MutableBubbleState> 
       }
       return { id: String(event.data.callId), role: 'start' }
     }
-    if (event.type === 'tool/result' && event.data.message.source.kind === 'tool') {
+    if (event.type === 'tool/result' && event.data.message?.source?.kind === 'tool') {
       return { id: String(event.data.message.source.callId), role: 'update' }
     }
     return null

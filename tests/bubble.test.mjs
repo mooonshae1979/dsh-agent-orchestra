@@ -34,5 +34,20 @@ t('collapseText long truncates with ellipsis', () => {
   assert.ok(r.excerpt.endsWith('…'))
   assert.ok(r.excerpt.length <= 201)
 })
+t('parse send_message invalid args returns undefined', () => {
+  assert.equal(parseSendMessageBubble(null), undefined)
+  assert.equal(parseSendMessageBubble('not-json'), undefined)
+  assert.equal(parseSendMessageBubble({}), undefined)
+})
+t('parse update_task invalid args returns undefined', () => {
+  assert.equal(parseUpdateTaskBubble(null), undefined)
+  assert.equal(parseUpdateTaskBubble('not-json'), undefined)
+  assert.equal(parseUpdateTaskBubble({ task_id: 't1' }), undefined)
+})
+t('collapseText tolerates empty string', () => {
+  assert.deepStrictEqual(collapseText(''), { excerpt: '', truncated: false })
+})
+
+
 
 console.log('\nbubble: ' + passed + ' passed')
