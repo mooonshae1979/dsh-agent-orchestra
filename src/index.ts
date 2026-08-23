@@ -25,7 +25,7 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type { WorkspaceRegistry } from '@deepseek-ai/dsh-workspace'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { registerAgentOrchestraTools, type ToolsConfig } from './tools.ts'
-import { captureMemberDirectReply } from './members.ts'
+import { sweepMemberReplies } from './members.ts'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -140,21 +140,6 @@ export function apply(ctx: Context, config: Config): void {
 
   registerAgentOrchestraTools(ctx, resolved)
 
-  // Capture member direct replies (bare closing messages when a member settles
-  // without calling orchestra_send_message) into the captain's inbox, so every
-  // member reply appears in the M4/M6 conversation surface. The `session/event`
-  // firehose may be unavailable in headless profiles — guard the registration
-  // so a missing service never blocks plugin boot.
-  try {
-    ctx.on('session/event', ((session: unknown, event: unknown) => {
-      void captureMemberDirectReply(ctx, resolved, event).catch((error: unknown) => {
-        ctx.logger.warn(`agent-orchestra: capture member reply failed: ${String(error)}`)
-      })
-    }) as never)
-  } catch (error: unknown) {
-    ctx.logger.warn(`agent-orchestra: session/event listener unavailable: ${String(error)}`)
-  }
-
   // The activity panel data/artwork routes need the Web server and the
   // workspace registry, which headless profiles do not mount; under
   // concurrent activation they may also bind after this plugin. Register the
@@ -180,6 +165,13 @@ export function apply(ctx: Context, config: Config): void {
         workspace: workspace.title,
         stateRoot: join(workspace.path, resolved.stateDir),
       }))
+      // Capture member direct replies (bare subagent-settled closing messages)
+      // into each team's captain inbox BEFORE assembling the snapshot, so this
+      // poll's captain_inbox already includes them. The sweep is seq-idempotent
+      // and fully defensive (offline captains are skipped).
+      if (url.searchParams.get('archived') !== '1') {
+        await sweepMemberReplies(ctx, resolved)
+      }
       // ?archived=1 serves teams moved to archive/ (post-delete review).
       const snapshots = url.searchParams.get('archived') === '1'
         ? await collectArchivedTeamsActivity(ctx, roots)

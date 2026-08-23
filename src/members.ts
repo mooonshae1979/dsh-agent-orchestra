@@ -17,12 +17,13 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 // Declaration merge only: makes ctx.subagents visible.
 import type {} from '@deepseek-ai/dsh-subagent'
 import type { SessionId } from '@deepseek-ai/dsh-session'
+import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   appendMailbox,
   CAPTAIN_KEY,
   createMessage,
-  findTeamByParticipant,
+  readTeam,
 } from './state.ts'
 import type { TeamMember, TeamState } from './types.ts'
 
@@ -276,14 +277,17 @@ export async function memberActivity(
 }
 
 /**
- * Dedupe window for captured direct replies: the same member + content is
- * written at most once per this interval, guarding against repeated settle
- * notifications for the same turn.
+ * Processed sequence markers per team: maps a `stateRoot/teamId` key to the
+ * highest event `seq` already swept into the captain inbox. Events with a
+ * `seq` at or below this marker were already captured (or skipped as
+ * not-a-reply), so a later sweep never duplicates a direct reply.
+ *
+ * NOTE: sequence numbers are session-global, not per-settle-event, so the
+ * marker records the highest *scanned* seq rather than the highest *written*
+ * one — that keeps malformed / non-reply events from being re-examined on
+ * every sweep while still guaranteeing no settle reply is skipped.
  */
-const DIRECT_REPLY_DEDUPE_MS = 2000
-
-/** Module-level dedupe map: `senderSessionId|content` → last write timestamp. */
-const recentDirectReplies = new Map<string, number>()
+const sweptTeamSeq = new Map<string, number>()
 
 /**
  * Extract the member's reply body from a `user/message` settle event.
@@ -324,37 +328,6 @@ function extractDirectReplyText(
 }
 
 /**
- * Locate the team a settled member belongs to, scanning every registered
- * workspace's state root. Returns the team id and the member's display name,
- * or `undefined` when the session is not one of our members.
- * @param ctx - the plugin context (for workspace access).
- * @param config - resolved plugin config (needs `stateDir`).
- * @param senderSessionId - the settled member's child session id.
- * @returns team id + member name, or `undefined` when not a member.
- */
-async function findMemberTeam(
-  ctx: Context,
-  config: { stateDir: string },
-  senderSessionId: string,
-): Promise<{ stateRoot: string; teamId: string; memberName: string } | undefined> {
-  const roots = workspaceRootsOf(ctx, config)
-  for (const stateRoot of roots) {
-    let team: TeamState | undefined
-    try {
-      team = await findTeamByParticipant(stateRoot, senderSessionId)
-    } catch (error: unknown) {
-      // Ambiguity across teams: skip this root rather than failing the capture.
-      ctx.logger.warn(`agent-orchestra: ambiguous team lookup for ${senderSessionId}: ${String(error)}`)
-      continue
-    }
-    if (team === undefined) continue
-    const member = team.members.find((candidate) => candidate.id === senderSessionId && candidate.status !== 'removed')
-    return { stateRoot, teamId: team.id, memberName: member?.name ?? senderSessionId }
-  }
-  return undefined
-}
-
-/**
  * All state roots to scan for a settled member: one per registered workspace.
  * Falls back to the current working directory when the registry is absent.
  * @param ctx - the plugin context.
@@ -388,62 +361,111 @@ function workspaceRootsOf(
 }
 
 /**
- * Capture a member's direct reply (a bare subagent closing message, without
- * an explicit `orchestra_send_message` call) into the team's captain inbox.
- *
- * DSH's `dsh-session` firehose injects a `user/message` event into the
- * captain's session whenever a member settles: the event carries the member's
- * child session id (`source.senderSessionId`), a one-line summary, and the
- * member's closing text blocks. This hook turns that direct reply into a
- * normal captain-inbox message so the M4/M6 conversation surface shows every
- * member reply, not just the ones routed through `orchestra_send_message`.
- *
- * Fully defensive: malformed events, unknown members, and storage failures
- * are silently ignored (the caller also wraps the invocation in a catch).
- * @param ctx - the plugin context (for logging and workspace access).
- * @param config - resolved plugin config (needs `stateDir`).
- * @param event - the raw `session/event` payload; typed loosely on purpose.
+ * List every team id under one state root (directories holding a team.json).
+ * @param stateRoot - resolved absolute state root directory.
+ * @returns the active team ids present.
  */
-export async function captureMemberDirectReply(
+async function listTeamIds(stateRoot: string): Promise<string[]> {
+  let entries
+  try {
+    entries = await readdir(stateRoot, { withFileTypes: true })
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return []
+    }
+    throw error
+  }
+  const ids: string[] = []
+  for (const entry of entries) {
+    if (entry.isDirectory()) ids.push(entry.name)
+  }
+  return ids
+}
+
+/**
+ * Sweep every live team's captain session events for `subagent-settled`
+ * direct replies, capturing each into that team's captain inbox.
+ *
+ * DSH's `session/event` firehose is agent-scoped, so a profile-level host
+ * plugin cannot observe member settle events pushed into the captain's
+ * session. Instead this runs on the `/state` snapshot route: for each team we
+ * read the live captain's `session.events` (the full appended event log) and
+ * pick out `user/message` events whose source is a settled member subagent.
+ * Those direct replies (a member ending its turn without calling
+ * `orchestra_send_message`) are written into the captain's inbox so the
+ * M4/M6 conversation surface captures every member reply.
+ *
+ * Idempotency is seq-based: we remember the highest session `seq` already
+ * swept per team, so a given event is captured at most once across sweeps.
+ *
+ * Fully defensive: offline captains, malformed events, unknown members, and
+ * storage failures are all skipped with a warning instead of throwing.
+ * @param ctx - the plugin context (injects `agents`, used to read captain sessions).
+ * @param config - resolved plugin config (needs `stateDir`).
+ */
+export async function sweepMemberReplies(
   ctx: Context,
   config: { stateDir: string },
-  event: unknown,
 ): Promise<void> {
-  try {
-    // 1. Fast filter: only user/message events whose source is a settled subagent.
-    if (typeof event !== 'object' || event === null) return
-    const record = event as { type?: unknown; data?: unknown }
-    if (record.type !== 'user/message') return
+  const roots = workspaceRootsOf(ctx, config)
+  for (const stateRoot of roots) {
+    for (const teamId of await listTeamIds(stateRoot)) {
+      try {
+        await sweepTeamSession(ctx, stateRoot, teamId)
+      } catch (error: unknown) {
+        ctx.logger.warn(`agent-orchestra: sweep team ${teamId} failed: ${String(error)}`)
+      }
+    }
+  }
+}
+
+/**
+ * Sweep one team's captain session for unprocessed member settle replies and
+ * append them to the captain mailbox.
+ * @param ctx - the plugin context (injects `agents`).
+ * @param stateRoot - resolved absolute state root of the owning workspace.
+ * @param teamId - the team id.
+ */
+async function sweepTeamSession(
+  ctx: Context,
+  stateRoot: string,
+  teamId: string,
+): Promise<void> {
+  const team = await readTeam(stateRoot, teamId)
+  if (team === undefined) return
+  const captain = (ctx as unknown as {
+    agents?: { get?: (id: unknown) => { session?: { events?: readonly unknown[] } } | undefined }
+  }).agents?.get?.(team.captainSessionId as SessionId)
+  if (captain?.session?.events === undefined) return
+
+  const memberById = new Map(
+    team.members
+      .filter((member) => member.status !== 'removed')
+      .map((member) => [member.id, member.name]),
+  )
+  const seenUpTo = sweptTeamSeq.get(`${stateRoot}|${teamId}`) ?? -1
+  let highest = seenUpTo
+  for (const event of captain.session.events) {
+    if (typeof event !== 'object' || event === null) continue
+    const record = event as { type?: unknown; seq?: unknown; data?: unknown }
+    if (record.type !== 'user/message') continue
+    const seq = typeof record.seq === 'number' ? record.seq : -1
+    if (seq <= seenUpTo) continue
+    if (seq > highest) highest = seq
+
     const source = (record.data as { message?: { source?: unknown } } | undefined)
       ?.message?.source as { kind?: unknown; senderSessionId?: unknown } | undefined
-    if (source?.kind !== 'subagent-settled') return
-
-    // 2. The settled member's durable child session id.
+    if (source?.kind !== 'subagent-settled') continue
     const senderSessionId = source.senderSessionId
-    if (typeof senderSessionId !== 'string' || senderSessionId.length === 0) return
+    if (typeof senderSessionId !== 'string' || senderSessionId.length === 0) continue
+    const memberName = memberById.get(senderSessionId)
+    if (memberName === undefined) continue
 
-    // 3. Extract the reply body: text blocks after "Its closing message:", or
-    //    the summary when there is no closing message. Trimmed-empty → skip.
     const content = extractDirectReplyText(record.data, source)
-    if (content === '') return
+    if (content === '') continue
 
-    // 4. Find the team owning this member across every registered workspace.
-    const found = await findMemberTeam(ctx, config, senderSessionId)
-    if (found === undefined) return
-    const { stateRoot, teamId, memberName } = found
-
-    // 5. Idempotency: the same member + content is only written once per
-    //    short window (2s), guarding against duplicate settle notifications.
-    const dedupeKey = `${senderSessionId}|${content}`
-    const now = Date.now()
-    const lastWrite = recentDirectReplies.get(dedupeKey)
-    if (lastWrite !== undefined && now - lastWrite < DIRECT_REPLY_DEDUPE_MS) return
-    recentDirectReplies.set(dedupeKey, now)
-
-    // 6. Write the reply into the captain's inbox as a normal message.
     const message = createMessage(memberName, CAPTAIN_KEY, content)
     await appendMailbox(stateRoot, teamId, CAPTAIN_KEY, message)
-  } catch (error: unknown) {
-    ctx.logger.warn(`agent-orchestra: capture member direct reply failed: ${String(error)}`)
   }
+  if (highest > seenUpTo) sweptTeamSeq.set(`${stateRoot}|${teamId}`, highest)
 }
